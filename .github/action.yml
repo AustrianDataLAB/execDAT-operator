@@ -1,0 +1,23 @@
+name: 'Build Operator'
+description: 'Build Operator'
+inputs:
+  image:
+    description: 'Docker Image Name'
+    required: true
+    default: 'execDAT-operator'
+  tag:
+    description: 'Docker Image Tag'
+    required: false
+    default: 0.0.1
+  dirPath:
+    description: 'Dockerfile Path'
+    required: false
+    default: 'execDAT-operator/Dockerfile'
+runs:
+  using: 'composite'
+  steps:
+    - uses: dxas90/operator-sdk-github-action
+      with:
+          image: '${{ inputs.image }}'
+          tag: '${{ inputs.tag }}'
+          dirPath: '${{ inputs.dirPath }}'
