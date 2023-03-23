@@ -12,6 +12,11 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Setup Go environment
+      uses: actions/setup-go@v4.0.0
+    - uses: shivanshs9/setup-k8s-operator-sdk@v1
+      with:
+        version: "^1.27.0" # The operator-sdk version to download (if necessary) and use.
     - uses: dxas90/operator-sdk-github-action@v3
       with:
           image: '${{ inputs.image }}'
