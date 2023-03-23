@@ -16,7 +16,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - uses: dxas90/operator-sdk-github-action
+    - uses: dxas90/operator-sdk-github-action@v3
       with:
           image: '${{ inputs.image }}'
           tag: '${{ inputs.tag }}'
