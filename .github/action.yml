@@ -9,10 +9,6 @@ inputs:
     description: 'Docker Image Tag'
     required: false
     default: 0.0.1
-  dirPath:
-    description: 'Dockerfile Path'
-    required: false
-    default: 'execDAT-operator/Dockerfile'
 runs:
   using: 'composite'
   steps:
@@ -20,4 +16,3 @@ runs:
       with:
           image: '${{ inputs.image }}'
           tag: '${{ inputs.tag }}'
-          dirPath: '${{ inputs.dirPath }}'
