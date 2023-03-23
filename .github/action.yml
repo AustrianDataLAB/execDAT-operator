@@ -18,9 +18,7 @@ runs:
     - name: debug env
       shell: bash
       run: |
-        echo $PATH
         export PATH=$PATH:/usr/local/bin
-        operator-sdk version
     - name: Install Operator SDK
       shell: bash
       run: |
