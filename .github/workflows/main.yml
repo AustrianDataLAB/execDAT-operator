@@ -13,6 +13,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Install Operator SDK
+        shell: bash
+        run: |
+          curl -LO https://github.com/operator-framework/operator-sdk/releases/download/v${{ env.OPERATOR_SDK_VERSION }}/operator-sdk-v${{ env.OPERATOR_SDK_VERSION }}-x86_64-linux-gnu
+          chmod +x operator-sdk-v${{ env.OPERATOR_SDK_VERSION }}-x86_64-linux-gnu
+          mv operator-sdk-v${{ env.OPERATOR_SDK_VERSION }}-x86_64-linux-gnu /usr/local/bin/operator-sdk
+        env:
+          OPERATOR_SDK_VERSION: 1.28.0
+
       # Build the bundle image
       - name: Build bundle
         run: |
