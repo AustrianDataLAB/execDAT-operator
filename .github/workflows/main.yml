@@ -13,10 +13,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Build and push the bundle image to GitHub Container Registry
-      - name: Build and push bundle
+      # Build the bundle image
+      - name: Build bundle
         run: |
           echo "Building bundle"
           operator-sdk bundle create ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.OPERATOR_VERSION }} --directory ./deploy/olm-catalog/${{ env.OPERATOR_NAME }}/ --package ${{ env.OPERATOR_NAME }} --version ${{ env.OPERATOR_VERSION }}
           docker login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ${{ env.IMAGE_REGISTRY }}
-          docker build -t ${{ env.IMAGE_REGISTRY }}/${{ github.repository }}/${{ OPERATOR_NAME }}:${{ env.OPERATOR_VERSION }} ./deploy/olm-catalog/${{ env.OPERATOR_NAME }}/
+          docker build -t ${{ env.IMAGE_REGISTRY }}/${{ github.repository }}/${{ env.OPERATOR_NAME }}:${{ env.OPERATOR_VERSION }} ./deploy/olm-catalog/${{ env.OPERATOR_NAME }}/
