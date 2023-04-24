@@ -18,6 +18,7 @@ jobs:
       - name: Install operator-sdk
         run: |
           RELEASE_VERSION=$(curl --silent "https://api.github.com/repos/operator-framework/operator-sdk/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+          if [ -n "${{ env.OPERATOR_SDK_VERSION }}"]; then RELEASE_VERSION="${{ env.OPERATOR_SDK_VERSION }}"; fi;
           curl -LO "https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk_${RELEASE_VERSION}_x86_64-linux-gnu"
           chmod +x operator-sdk_${RELEASE_VERSION}_x86_64-linux-gnu
           sudo mv operator-sdk_${RELEASE_VERSION}_x86_64-linux-gnu /usr/local/bin/operator-sdk
@@ -26,6 +27,6 @@ jobs:
       - name: Build bundle
         run: |
           echo "Building bundle"
-          operator-sdk bundle create ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.OPERATOR_VERSION }} --directory ./deploy/olm-catalog/${{ env.OPERATOR_NAME }}/ --package ${{ env.OPERATOR_NAME }} --version ${{ env.OPERATOR_VERSION }}
+          /usr/local/bin/operator-sdk bundle create ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.OPERATOR_VERSION }} --directory ./deploy/olm-catalog/${{ env.OPERATOR_NAME }}/ --package ${{ env.OPERATOR_NAME }} --version ${{ env.OPERATOR_VERSION }}
           docker login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ${{ env.IMAGE_REGISTRY }}
           docker build -t ${{ env.IMAGE_REGISTRY }}/${{ github.repository }}/${{ env.OPERATOR_NAME }}:${{ env.OPERATOR_VERSION }} ./deploy/olm-catalog/${{ env.OPERATOR_NAME }}/
