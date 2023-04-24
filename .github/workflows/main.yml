@@ -3,7 +3,7 @@ on: [push]
 
 env:
   IMAGE_REGISTRY: ghcr.io
-  OPERATOR_SDK_VERSION: 1.28.0
+  OPERATOR_SDK_VERSION: v1.28.0
   OPERATOR_NAME: exec-daemon
   OPERATOR_VERSION: latest
 
@@ -17,8 +17,8 @@ jobs:
       # Install the operator-sdk CLI
       - name: Install operator-sdk
         run: |
-          RELEASE_VERSION=$(curl --silent "https://api.github.com/repos/operator-framework/operator-sdk/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-          if [ -n "${{ env.OPERATOR_SDK_VERSION }}"]; then RELEASE_VERSION="${{ env.OPERATOR_SDK_VERSION }}"; fi;
+          RELEASE_VERSION=$(curl --silent "https://api.github.com/repos/operator-framework/operator-sdk/releases/latest" | jq --raw-output '.tag_name')
+          if [ -n "${{ env.OPERATOR_SDK_VERSION }}" ]; then RELEASE_VERSION="${{ env.OPERATOR_SDK_VERSION }}"; fi
           curl -LO "https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk_${RELEASE_VERSION}_x86_64-linux-gnu"
           chmod +x operator-sdk_${RELEASE_VERSION}_x86_64-linux-gnu
           sudo mv operator-sdk_${RELEASE_VERSION}_x86_64-linux-gnu /usr/local/bin/operator-sdk
