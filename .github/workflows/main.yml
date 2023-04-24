@@ -3,6 +3,7 @@ on: [push]
 
 env:
   IMAGE_REGISTRY: ghcr.io
+  OPERATOR_SDK_VERSION: 1.28.0
   OPERATOR_NAME: exec-daemon
   OPERATOR_VERSION: latest
 
@@ -13,14 +14,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install Operator SDK
-        shell: bash
+      # Install the operator-sdk CLI
+      - name: Install operator-sdk
         run: |
-          curl -LO https://github.com/operator-framework/operator-sdk/releases/download/v${{ env.OPERATOR_SDK_VERSION }}/operator-sdk-v${{ env.OPERATOR_SDK_VERSION }}-x86_64-linux-gnu
-          chmod +x operator-sdk-v${{ env.OPERATOR_SDK_VERSION }}-x86_64-linux-gnu
-          mv operator-sdk-v${{ env.OPERATOR_SDK_VERSION }}-x86_64-linux-gnu /usr/local/bin/operator-sdk
-        env:
-          OPERATOR_SDK_VERSION: 1.28.0
+          RELEASE_VERSION=$(curl --silent "https://api.github.com/repos/operator-framework/operator-sdk/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+          curl -LO "https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk_${RELEASE_VERSION}_x86_64-linux-gnu"
+          chmod +x operator-sdk_${RELEASE_VERSION}_x86_64-linux-gnu
+          sudo mv operator-sdk_${RELEASE_VERSION}_x86_64-linux-gnu /usr/local/bin/operator-sdk
 
       # Build the bundle image
       - name: Build bundle
