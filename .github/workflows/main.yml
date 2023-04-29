@@ -84,7 +84,8 @@ jobs:
           DOCKER_BUILDKIT: 1 # Enable Docker Buildkit
         run: |
           echo "Building bundle"
-          export IMG="${{ env.IMAGE_REGISTRY }}/$GITHUB_REPOSITORY/${{ env.OPERATOR_NAME }}:${{ env.OPERATOR_VERSION }}"
+          export REPO=${GITHUB_REPOSITORY,,}
+          export IMG="${{ env.IMAGE_REGISTRY }}/$REPO/${{ env.OPERATOR_NAME }}:${{ env.OPERATOR_VERSION }}"
           export BUNDLE_IMG="$IMG"
           make docker-build docker-push
           make bundle
