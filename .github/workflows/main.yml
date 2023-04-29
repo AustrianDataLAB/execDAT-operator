@@ -37,7 +37,7 @@ jobs:
               }
               core.exportVariable('IS_RELEASE', true)
             }
-            core.exportVariable('OPERATOR_VERSION')
+            core.exportVariable('OPERATOR_VERSION', OPERATOR_VERSION)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -84,7 +84,7 @@ jobs:
           DOCKER_BUILDKIT: 1 # Enable Docker Buildkit
         run: |
           echo "Building bundle"
-          export IMG="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.OPERATOR_VERSION }}"
+          export IMG="${{ env.IMAGE_REGISTRY }}/${{ env.GITHUB_REPOSITORY }}/${{ env.OPERATOR_NAME }}:${{ env.OPERATOR_VERSION }}"
           export BUNDLE_IMG="${IMG}"
           make docker-build docker-push
           make bundle
