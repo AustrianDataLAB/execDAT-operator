@@ -31,7 +31,8 @@ jobs:
         with:
           result-encoding: string
           script: |
-            let OPERATOR_VERSION = github.ref
+            const {GITHUB_REF_NAME} = process.env
+            let OPERATOR_VERSION = GITHUB_REF_NAME
             if (context.eventName == 'release' && context.action == 'published') {
               try {
                 const response = await github.repos.getLatestRelease({
@@ -83,7 +84,7 @@ jobs:
           DOCKER_BUILDKIT: 1 # Enable Docker Buildkit
         run: |
           echo "Building bundle"
-          export IMG="${{ env.IMAGE_REGISTRY }}/${{ github.ref }}/${{ env.OPERATOR_NAME }}:${{ env.OPERATOR_VERSION }}"
+          export IMG="${{ env.IMAGE_REGISTRY }}/${ GITHUB_REPOSITORY }/${{ env.OPERATOR_NAME }}:${{ env.OPERATOR_VERSION }}"
           export BUNDLE_IMG="${IMG}"
           make docker-build docker-push
           make bundle
