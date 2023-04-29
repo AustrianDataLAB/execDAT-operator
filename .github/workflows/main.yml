@@ -20,37 +20,31 @@ jobs:
       # Determine the most recent release version number
       - name: Determine most recent release
         id: latest_release
-        uses: actions/github-script@v4
+        uses: actions/github-script@v6
         with:
+          result-encoding: string
           script: |
+            let OPERATOR_VERSION = context.ref
             if (context.eventName == 'release' && context.action == 'published') {
               try {
                 const response = await github.repos.getLatestRelease({
                   owner: context.repo.owner,
                   repo: context.repo.repo
                 });
-                console.log(JSON.stringify(response.data.tag_name));
+                OPERATOR_VERSION = JSON.stringify(response.data.tag_name);
               } catch (error) {
-                console.log('0.0.1') //if there is no release yet
+                OPERATOR_VERSION = "0.0.0"
               }
-            } else {
-              console.log(context.ref)
+              core.exportVariable('IS_RELEASE', true)
             }
+            core.exportVariable('OPERATOR_VERSION')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Determine the next version number based on the most recent release
-      - name: Determine next version
-        id: next_version
-        if: ${{ steps.latest_release.outputs != '' }}
-        run: echo "::set-env name=OPERATOR_VERSION::$(semver -i minor ${{ steps.latest_release.outputs }})"
-        env:
-          OPERATOR_VERSION: ${{ steps.latest_release.outputs }}
 
       # Increment the version number by a major release
       - name: Increment major version number
         id: increment_major_version
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'major' }}
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.inputs.bump == 'major' }}
         run: echo "::set-env name=OPERATOR_VERSION::$(semver -i major ${{ env.OPERATOR_VERSION }})"
 
       # Increment the version number by a minor release
