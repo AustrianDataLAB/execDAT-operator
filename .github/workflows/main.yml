@@ -51,19 +51,19 @@ jobs:
 
       # Increment the version number by a major release
       - name: Increment major version number
-        id: increment_version
+        id: increment_major_version
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'major' }}
         run: echo "::set-env name=OPERATOR_VERSION::$(semver -i major ${{ env.OPERATOR_VERSION }})"
 
       # Increment the version number by a minor release
       - name: Increment minor version number
-        id: increment_version
+        id: increment_minor_version
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'minor' }}
         run: echo "::set-env name=OPERATOR_VERSION::$(semver -i minor ${{ env.OPERATOR_VERSION }})"
 
       # Increment the version number by a patch release
       - name: Increment patch version number
-        id: increment_version
+        id: increment_patch_version
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'patch' }}
         run: echo "::set-env name=OPERATOR_VERSION::$(semver -i patch ${{ env.OPERATOR_VERSION }})"
 
