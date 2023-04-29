@@ -35,7 +35,7 @@ jobs:
       # Determine the next version number based on the most recent release
       - name: Determine next version
         id: next_version
-        if: ${{ steps.latest_release.outputs != '' }}
+        if: ${{ steps.latest_release && steps.latest_release.outputs != '' }}
         run: echo "::set-env name=OPERATOR_VERSION::$(semver -i minor ${{ steps.latest_release.outputs }})"
         env:
           OPERATOR_VERSION: ${{ steps.latest_release.outputs }}
@@ -43,7 +43,7 @@ jobs:
       # If there is no previous release, start with version 0.0.1
       - name: Start with version 0.0.1
         id: start_version
-        if: ${{ steps.latest_release.outputs == '' }}
+        if: ${{ steps.latest_release && steps.latest_release.outputs == '' }}
         run: echo "::set-env name=OPERATOR_VERSION::0.0.1"
         env:
           OPERATOR_VERSION: 0.0.1
