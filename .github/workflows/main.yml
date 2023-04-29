@@ -23,12 +23,16 @@ jobs:
         uses: actions/github-script@v4
         with:
           script: |
-            const response = await github.repos.getLatestRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            });
             if (context.eventName == 'release' && context.action == 'published') {
-              console.log(JSON.stringify(response.data.tag_name));
+              try {
+                const response = await github.repos.getLatestRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo
+                });
+                console.log(JSON.stringify(response.data.tag_name));
+              } catch (error) {
+                console.log('0.0.1') //if there is no release yet
+              }
             } else {
               console.log(context.ref)
             }
@@ -42,14 +46,6 @@ jobs:
         run: echo "::set-env name=OPERATOR_VERSION::$(semver -i minor ${{ steps.latest_release.outputs }})"
         env:
           OPERATOR_VERSION: ${{ steps.latest_release.outputs }}
-
-      # If there is no previous release, start with version 0.0.1
-      - name: Start with version 0.0.1
-        id: start_version
-        if: ${{ steps.latest_release.outputs == '' }}
-        run: echo "::set-env name=OPERATOR_VERSION::0.0.1"
-        env:
-          OPERATOR_VERSION: 0.0.1
 
       # Increment the version number by a major release
       - name: Increment major version number
