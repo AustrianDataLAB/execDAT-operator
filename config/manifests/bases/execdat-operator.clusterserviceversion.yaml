@@ -1,0 +1,57 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+  name: execdat-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: Build is the Schema for the builds API
+      displayName: Build
+      kind: Build
+      name: builds.task.execd.at
+      version: v1alpha1
+    - description: Run is the Schema for the runs API
+      displayName: Run
+      kind: Run
+      name: runs.task.execd.at
+      version: v1alpha1
+  description: remote code execution for research
+  displayName: ExecDAT Operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - execd
+  - execdat
+  - operator
+  - k8s
+  - research
+  links:
+  - name: Execdat Operator
+    url: https://execdat-operator.domain
+  maintainers:
+  - email: kontakt@weber-thomas.at
+    name: Thomas Weber
+  maturity: alpha
+  provider:
+    name: ExecDAT
+    url: https://github.com/AustrianDataLAB/execDAT
+  version: 0.0.0

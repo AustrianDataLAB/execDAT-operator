@@ -29,13 +29,17 @@ type RunSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Run. Edit run_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Build       BuildSpec      `json:"build"`
+	OutputData  OutputDataSpec `json:"outputdata"`
+	InputData   InputDataSpec  `json:"inputdata,omitempty"`
+	Description string         `json:"description,omitempty"`
 }
 
 // RunStatus defines the observed state of Run
 type RunStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	CurrentPhase string `json:"currentPhase"` //TODO: add fields of status and dataurls to kubectl get outputs
 }
 
 //+kubebuilder:object:root=true

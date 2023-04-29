@@ -5,14 +5,75 @@ env:
   IMAGE_REGISTRY: ghcr.io
   OPERATOR_SDK_VERSION: v1.28.0
   OPERATOR_NAME: exec-daemon
-  OPERATOR_VERSION: latest
+  #OPERATOR_VERSION: latest
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged --insecure-registry ghcr.io # Add insecure-registry option to allow GHCR login
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      # Determine the most recent release version number
+      - name: Determine most recent release
+        id: latest_release
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const response = await github.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            console.log(JSON.stringify(response.data.tag_name));
+        if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Determine the next version number based on the most recent release
+      - name: Determine next version
+        id: next_version
+        if: ${{ steps.latest_release.outputs != '' }}
+        run: echo "::set-env name=OPERATOR_VERSION::$(semver -i minor ${{ steps.latest_release.outputs }})"
+        env:
+          OPERATOR_VERSION: ${{ steps.latest_release.outputs }}
+
+      # If there is no previous release, start with version 0.0.1
+      - name: Start with version 0.0.1
+        id: start_version
+        if: ${{ steps.latest_release.outputs == '' }}
+        run: echo "::set-env name=OPERATOR_VERSION::0.0.1"
+        env:
+          OPERATOR_VERSION: 0.0.1
+
+      # Increment the version number by a major release
+      - name: Increment major version number
+        id: increment_version
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'major' }}
+        run: echo "::set-env name=OPERATOR_VERSION::$(semver -i major ${{ env.OPERATOR_VERSION }})"
+
+      # Increment the version number by a minor release
+      - name: Increment minor version number
+        id: increment_version
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'minor' }}
+        run: echo "::set-env name=OPERATOR_VERSION::$(semver -i minor ${{ env.OPERATOR_VERSION }})"
+
+      # Increment the version number by a patch release
+      - name: Increment patch version number
+        id: increment_version
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'patch' }}
+        run: echo "::set-env name=OPERATOR_VERSION::$(semver -i patch ${{ env.OPERATOR_VERSION }})"
+
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # Install the operator-sdk CLI
       - name: Install operator-sdk
@@ -27,11 +88,12 @@ jobs:
       # Build the bundle image
       - name: Build bundle
         shell: bash
+        env:
+          DOCKER_BUILDKIT: 1 # Enable Docker Buildkit
         run: |
           echo "Building bundle"
-          echo $PATH
-          whoami
-          ls -lah /usr/local/bin/operator-sdk
-          /usr/local/bin/operator-sdk bundle create ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.OPERATOR_VERSION }} --directory ./deploy/olm-catalog/${{ env.OPERATOR_NAME }}/ --package ${{ env.OPERATOR_NAME }} --version ${{ env.OPERATOR_VERSION }}
-          docker login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ${{ env.IMAGE_REGISTRY }}
-          docker build -t ${{ env.IMAGE_REGISTRY }}/${{ github.repository }}/${{ env.OPERATOR_NAME }}:${{ env.OPERATOR_VERSION }} ./deploy/olm-catalog/${{ env.OPERATOR_NAME }}/
+          export IMG="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.OPERATOR_VERSION }}"
+          export BUNDLE_IMG="${IMG}"
+          make docker-build docker-push
+          make bundle
+          make bundle-build bundle-push

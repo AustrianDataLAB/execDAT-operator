@@ -1,0 +1,297 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "task.execd.at/v1alpha1",
+          "kind": "Build",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/created-by": "execdat-operator",
+              "app.kubernetes.io/instance": "build-sample",
+              "app.kubernetes.io/managed-by": "kustomize",
+              "app.kubernetes.io/name": "build",
+              "app.kubernetes.io/part-of": "execdat-operator"
+            },
+            "name": "build-sample"
+          },
+          "spec": null
+        },
+        {
+          "apiVersion": "task.execd.at/v1alpha1",
+          "kind": "Run",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/created-by": "execdat-operator",
+              "app.kubernetes.io/instance": "run-sample",
+              "app.kubernetes.io/managed-by": "kustomize",
+              "app.kubernetes.io/name": "run",
+              "app.kubernetes.io/part-of": "execdat-operator"
+            },
+            "name": "run-sample"
+          },
+          "spec": null
+        }
+      ]
+    capabilities: Basic Install
+    createdAt: "2023-04-29T08:44:51Z"
+    operators.operatorframework.io/builder: operator-sdk-v1.28.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4-alpha
+  name: execdat-operator.v0.0.1
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: Build is the Schema for the builds API
+      displayName: Build
+      kind: Build
+      name: builds.task.execd.at
+      version: v1alpha1
+    - description: Run is the Schema for the runs API
+      displayName: Run
+      kind: Run
+      name: runs.task.execd.at
+      version: v1alpha1
+  description: remote code execution for research
+  displayName: ExecDAT Operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - task.execd.at
+          resources:
+          - builds
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - task.execd.at
+          resources:
+          - builds/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - task.execd.at
+          resources:
+          - builds/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - task.execd.at
+          resources:
+          - runs
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - task.execd.at
+          resources:
+          - runs/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - task.execd.at
+          resources:
+          - runs/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        serviceAccountName: execdat-operator-controller-manager
+      deployments:
+      - label:
+          app.kubernetes.io/component: manager
+          app.kubernetes.io/created-by: execdat-operator
+          app.kubernetes.io/instance: controller-manager
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: deployment
+          app.kubernetes.io/part-of: execdat-operator
+          control-plane: controller-manager
+        name: execdat-operator-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: controller-manager
+          strategy: {}
+          template:
+            metadata:
+              annotations:
+                kubectl.kubernetes.io/default-container: manager
+              labels:
+                control-plane: controller-manager
+            spec:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                    - matchExpressions:
+                      - key: kubernetes.io/arch
+                        operator: In
+                        values:
+                        - amd64
+                        - arm64
+                        - ppc64le
+                        - s390x
+                      - key: kubernetes.io/os
+                        operator: In
+                        values:
+                        - linux
+              containers:
+              - args:
+                - --config=controller_manager_config.yaml
+                command:
+                - /manager
+                image: execd.at/operator:latest
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                name: manager
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 128Mi
+                  requests:
+                    cpu: 10m
+                    memory: 64Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+                volumeMounts:
+                - mountPath: /controller_manager_config.yaml
+                  name: manager-config
+                  subPath: controller_manager_config.yaml
+              - args:
+                - --secure-listen-address=0.0.0.0:8443
+                - --upstream=http://127.0.0.1:8080/
+                - --logtostderr=true
+                - --v=0
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.0
+                name: kube-rbac-proxy
+                ports:
+                - containerPort: 8443
+                  name: https
+                  protocol: TCP
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 128Mi
+                  requests:
+                    cpu: 5m
+                    memory: 64Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+              securityContext:
+                runAsNonRoot: true
+              serviceAccountName: execdat-operator-controller-manager
+              terminationGracePeriodSeconds: 10
+              volumes:
+              - configMap:
+                  name: execdat-operator-manager-config
+                name: manager-config
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - coordination.k8s.io
+          resources:
+          - leases
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        serviceAccountName: execdat-operator-controller-manager
+    strategy: deployment
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - execd
+  - execdat
+  - operator
+  - k8s
+  - research
+  links:
+  - name: Execdat Operator
+    url: https://execdat-operator.domain
+  maintainers:
+  - email: kontakt@weber-thomas.at
+    name: Thomas Weber
+  maturity: alpha
+  provider:
+    name: ExecDAT
+    url: https://github.com/AustrianDataLAB/execDAT
+  version: 0.0.1
