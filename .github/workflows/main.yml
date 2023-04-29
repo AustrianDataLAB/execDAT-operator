@@ -13,7 +13,6 @@ jobs:
     services:
       docker:
         image: docker:dind
-        options: --privileged --insecure-registry ghcr.io # Add insecure-registry option to allow GHCR login
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
