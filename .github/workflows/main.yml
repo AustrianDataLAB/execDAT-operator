@@ -4,7 +4,6 @@ on: [push]
 env:
   IMAGE_REGISTRY: ghcr.io
   OPERATOR_SDK_VERSION: v1.28.0
-  OPERATOR_NAME: exec-daemon
   #OPERATOR_VERSION: latest
 
 jobs:
@@ -84,9 +83,10 @@ jobs:
           DOCKER_BUILDKIT: 1 # Enable Docker Buildkit
         run: |
           echo "Building bundle"
-          export REPO=${GITHUB_REPOSITORY,,}
-          export IMG="${{ env.IMAGE_REGISTRY }}/$REPO/${{ env.OPERATOR_NAME }}:${{ env.OPERATOR_VERSION }}"
-          export BUNDLE_IMG="$IMG"
+          export REPO=${GITHUB_REPOSITORY,,} #this must be lowercase
+          export IMG_REPO="${{ env.IMAGE_REGISTRY }}/${REPO}"
+          export IMG="${IMG_REPO}:${{ env.OPERATOR_VERSION }}"
+          export BUNDLE_IMG="${IMG_REPO}-bundle:${{ env.OPERATOR_VERSION }}"
           make docker-build docker-push
           make bundle
           make bundle-build bundle-push
