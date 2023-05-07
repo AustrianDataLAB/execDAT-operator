@@ -1,6 +1,6 @@
 # main.yml
 name: Build and Release Operator
-run-name: ${{ github.actor }} triggered Build and Release Operator
+run-name: Build/Release Operator triggerd by ${{ github.actor }} - ${{ github.commit_message }}
 
 on: [push]
 
@@ -13,10 +13,14 @@ jobs:
   main:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
     - name: Export Repo Name lowercase
       run: echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
     - name: Set Image Registry
       run: echo "IMAGE_REPO=${{ env.IMAGE_REGISTRY }}/${{ env.REPO }}" >>${GITHUB_ENV}
+
       # Determine the most recent release version number
     - name: Determine most recent release
       id: latest_release
