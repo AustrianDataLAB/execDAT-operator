@@ -7,7 +7,79 @@ env:
   #OPERATOR_VERSION: latest
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Export Repo Name lowercase
+      run: echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
+    - name: Set Image Registry
+      run: echo "IMAGE_REPO=${{ env.IMAGE_REGISTRY }}/${{ env.REPO }}" >>${GITHUB_ENV}
+      # Determine the most recent release version number
+    - name: Determine most recent release
+      id: latest_release
+      uses: actions/github-script@v6
+      with:
+        result-encoding: string
+        script: |
+          const {GITHUB_REF_NAME} = process.env
+          let OPERATOR_VERSION = GITHUB_REF_NAME
+          if (context.eventName == 'release' && context.action == 'published') {
+            try {
+              const response = await github.repos.getLatestRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo
+              });
+              OPERATOR_VERSION = JSON.stringify(response.data.tag_name);
+            } catch (error) {
+              OPERATOR_VERSION = "0.0.0"
+            }
+            core.exportVariable('IS_RELEASE', true)
+          }
+          core.exportVariable('OPERATOR_VERSION', OPERATOR_VERSION)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # Increment the version number by a major release
+    - name: Increment major version number
+      id: increment_major_version
+      if: ${{ github.event_name == 'workflow_dispatch' || github.event.inputs.bump == 'major' }}
+      run: echo "::set-env name=OPERATOR_VERSION::$(semver -i major ${{ env.OPERATOR_VERSION }})"
+
+    # Increment the version number by a minor release
+    - name: Increment minor version number
+      id: increment_minor_version
+      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'minor' }}
+      run: echo "::set-env name=OPERATOR_VERSION::$(semver -i minor ${{ env.OPERATOR_VERSION }})"
+
+    # Increment the version number by a patch release
+    - name: Increment patch version number
+      id: increment_patch_version
+      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'patch' }}
+      run: echo "::set-env name=OPERATOR_VERSION::$(semver -i patch ${{ env.OPERATOR_VERSION }})"
+
+  docker:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: "{{defaultContext}}:hack"
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_REPO }}-buildah:${{ env.OPERATOR_VERSION }}
   release:
+    needs: prepare
     runs-on: ubuntu-latest
     services:
       docker:
@@ -16,55 +88,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
-          registry: ghcr.io
+          registry: ${{ env.IMAGE_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-
-      # Determine the most recent release version number
-      - name: Determine most recent release
-        id: latest_release
-        uses: actions/github-script@v6
-        with:
-          result-encoding: string
-          script: |
-            const {GITHUB_REF_NAME} = process.env
-            let OPERATOR_VERSION = GITHUB_REF_NAME
-            if (context.eventName == 'release' && context.action == 'published') {
-              try {
-                const response = await github.repos.getLatestRelease({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo
-                });
-                OPERATOR_VERSION = JSON.stringify(response.data.tag_name);
-              } catch (error) {
-                OPERATOR_VERSION = "0.0.0"
-              }
-              core.exportVariable('IS_RELEASE', true)
-            }
-            core.exportVariable('OPERATOR_VERSION', OPERATOR_VERSION)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Increment the version number by a major release
-      - name: Increment major version number
-        id: increment_major_version
-        if: ${{ github.event_name == 'workflow_dispatch' || github.event.inputs.bump == 'major' }}
-        run: echo "::set-env name=OPERATOR_VERSION::$(semver -i major ${{ env.OPERATOR_VERSION }})"
-
-      # Increment the version number by a minor release
-      - name: Increment minor version number
-        id: increment_minor_version
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'minor' }}
-        run: echo "::set-env name=OPERATOR_VERSION::$(semver -i minor ${{ env.OPERATOR_VERSION }})"
-
-      # Increment the version number by a patch release
-      - name: Increment patch version number
-        id: increment_patch_version
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'patch' }}
-        run: echo "::set-env name=OPERATOR_VERSION::$(semver -i patch ${{ env.OPERATOR_VERSION }})"
 
       # Install the operator-sdk CLI
       - name: Install operator-sdk
@@ -83,9 +111,7 @@ jobs:
           DOCKER_BUILDKIT: 1 # Enable Docker Buildkit
         run: |
           echo "Building bundle"
-          export REPO=${GITHUB_REPOSITORY,,} #this must be lowercase
-          export IMG_REPO="${{ env.IMAGE_REGISTRY }}/${REPO}"
-          export IMG="${IMG_REPO}:${{ env.OPERATOR_VERSION }}"
+          export IMG="${{ env.IMAGE_REPO }}:${{ env.OPERATOR_VERSION }}"
           export BUNDLE_IMG="${IMG_REPO}-bundle:${{ env.OPERATOR_VERSION }}"
           make docker-build docker-push
           make bundle
