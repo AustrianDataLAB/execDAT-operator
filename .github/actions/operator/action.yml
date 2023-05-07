@@ -1,0 +1,49 @@
+name: 'Buildah Container Image'
+description: 'build rootless container image'
+
+inputs:
+  IMAGE_REPO:
+    description: 'Repository for ghcr.io'
+    required: true
+    default: 'ghcr.io/execdat-operator'
+  VERSION_TAG:
+    description: 'Tag for image'
+    required: true
+    default: 'latest'
+
+outputs: {}
+
+runs:
+  using: "composite"
+  steps:
+  - name: Checkout code
+    uses: actions/checkout@v3
+  - name: Login to GitHub Container Registry
+    uses: docker/login-action@v2
+    with:
+      registry: ${{ env.IMAGE_REGISTRY }}
+      username: ${{ github.actor }}
+      password: ${{ secrets.GITHUB_TOKEN }}
+
+  # Install the operator-sdk CLI
+  - name: Install operator-sdk
+    shell: bash
+    run: |
+      export RELEASE_VERSION=$(curl --silent "https://api.github.com/repos/operator-framework/operator-sdk/releases/latest" | jq --raw-output '.tag_name')
+      if [ -n "${{ env.OPERATOR_SDK_VERSION }}" ]; then export RELEASE_VERSION="${{ env.OPERATOR_SDK_VERSION }}"; fi
+      curl -LO "https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk_linux_amd64"
+      chmod +wx operator-sdk_linux_amd64
+      mv operator-sdk_linux_amd64 /usr/local/bin/operator-sdk
+
+  # Build the bundle image
+  - name: Build bundle
+    shell: bash
+    env:
+      DOCKER_BUILDKIT: "1" # Enable Docker Buildkit
+    run: |
+      echo "Building bundle"
+      export IMG="${{ inputs.IMAGE_REPO }}:${{ inputs.VERSION_TAG }}"
+      export BUNDLE_IMG="${{ inputs.IMAGE_REPO }}-bundle:${{ inputs.VERSION_TAG }}"
+      make docker-build docker-push
+      make bundle
+      make bundle-build bundle-push

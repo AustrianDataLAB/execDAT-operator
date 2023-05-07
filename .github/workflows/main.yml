@@ -1,6 +1,6 @@
 # main.yml
-name: Build and Release Operator
-run-name: Build/Release Operator triggerd by ${{ github.actor }} - ${{ github.commit_message }}
+name: Build and Release operator
+run-name: Build/Release operator triggerd by ${{ github.actor }} - ${{ github.event.head_commit.message }}
 
 on: [push]
 
@@ -12,6 +12,9 @@ env:
 jobs:
   main:
     runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:dind
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -65,15 +68,13 @@ jobs:
       run: echo "::set-env name=OPERATOR_VERSION::$(semver -i patch ${{ env.OPERATOR_VERSION }})"
 
     - name: buildah
-      uses: ./.github/actions
-      id: buildah
+      uses: ./.github/actions/buildah
       with:
         IMAGE_REPO: ${{ env.IMAGE_REPO }}
         VERSION_TAG: ${{ env.OPERATOR_VERSION }}
 
     - name: operator
-      uses: ./.github/actions
-      id: operator
+      uses: ./.github/actions/operator
       with:
         IMAGE_REPO: ${{ env.IMAGE_REPO }}
         VERSION_TAG: ${{ env.OPERATOR_VERSION }}
