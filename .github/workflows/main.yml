@@ -2,79 +2,137 @@
 name: Build and Release operator
 run-name: Build/Release operator triggerd by ${{ github.actor }} - ${{ github.event.head_commit.message }}
 
-on: [push]
+on: [push, pull_request, workflow_dispatch]
 
 env:
   IMAGE_REGISTRY: ghcr.io
   OPERATOR_SDK_VERSION: v1.28.0
-  #OPERATOR_VERSION: latest
 
 jobs:
-  main:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      IMAGE_REPO: ${{ steps.SET_IMAGE_REPO.outputs.IMAGE_REPO }}
+      OPERATOR_VERSION: ${{ steps.SET_OPERATOR_VERSION.outputs.OPERATOR_VERSION }}
+      IS_RELEASE: ${{ steps.SET_OPERATOR_VERSION.outputs.IS_RELEASE }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Export Repo Name lowercase
+        run: echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
+      - name: Set IMAGE_REPO
+        id: SET_IMAGE_REPO
+        run: echo "IMAGE_REPO=${{ env.IMAGE_REGISTRY }}/${{ env.REPO }}" >>${GITHUB_OUTPUT}
+
+      - name: Get Next Version
+        id: semver
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        uses: ietf-tools/semver-action@v1
+        with:
+          token: ${{ github.token }}
+          branch: main
+
+      - name: Set OPERATOR_VERSION
+        id: SET_OPERATOR_VERSION
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            const {GITHUB_REF_NAME} = process.env
+            let OPERATOR_VERSION = GITHUB_REF_NAME
+            if (${{ steps.semver.outputs.next }}) {
+              OPERATOR_VERSION = ${{ steps.semver.outputs.next }}
+              core.setOutput('IS_RELEASE', true)
+            }
+            core.setOutput('OPERATOR_VERSION', OPERATOR_VERSION)
+
+  buildah:
+    needs: prepare
     runs-on: ubuntu-latest
     services:
       docker:
         image: docker:dind
+    env:
+      IMAGE_REPO: ${{ needs.prepare.outputs.IMAGE_REPO }}
+      OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: "{{defaultContext}}:hack"
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_REPO }}-buildah:${{ env.OPERATOR_VERSION }}
 
-    - name: Export Repo Name lowercase
-      run: echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
-    - name: Set Image Registry
-      run: echo "IMAGE_REPO=${{ env.IMAGE_REGISTRY }}/${{ env.REPO }}" >>${GITHUB_ENV}
+  operator:
+    needs: prepare
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:dind
+    env:
+      IMAGE_REPO: ${{ needs.prepare.outputs.IMAGE_REPO }}
+      OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Determine the most recent release version number
-    - name: Determine most recent release
-      id: latest_release
-      uses: actions/github-script@v6
-      with:
-        result-encoding: string
-        script: |
-          const {GITHUB_REF_NAME} = process.env
-          let OPERATOR_VERSION = GITHUB_REF_NAME
-          if (context.eventName == 'release' && context.action == 'published') {
-            try {
-              const response = await github.repos.getLatestRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo
-              });
-              OPERATOR_VERSION = JSON.stringify(response.data.tag_name);
-            } catch (error) {
-              OPERATOR_VERSION = "0.0.0"
-            }
-            core.exportVariable('IS_RELEASE', true)
-          }
-          core.exportVariable('OPERATOR_VERSION', OPERATOR_VERSION)
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Install the operator-sdk CLI
+      - name: Install operator-sdk
+        shell: bash
+        run: |
+          export RELEASE_VERSION=$(curl --silent "https://api.github.com/repos/operator-framework/operator-sdk/releases/latest" | jq --raw-output '.tag_name')
+          if [ -n "${{ env.OPERATOR_SDK_VERSION }}" ]; then export RELEASE_VERSION="${{ env.OPERATOR_SDK_VERSION }}"; fi
+          curl -LO "https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk_linux_amd64"
+          chmod +wx operator-sdk_linux_amd64
+          mv operator-sdk_linux_amd64 /usr/local/bin/operator-sdk
 
-    # Increment the version number by a major release
-    - name: Increment major version number
-      id: increment_major_version
-      if: ${{ github.event_name == 'workflow_dispatch' || github.event.inputs.bump == 'major' }}
-      run: echo "::set-env name=OPERATOR_VERSION::$(semver -i major ${{ env.OPERATOR_VERSION }})"
+      # Build the bundle image
+      - name: Build bundle
+        shell: bash
+        env:
+          DOCKER_BUILDKIT: "1" # Enable Docker Buildkit
+        run: |
+          echo "Building bundle"
+          export IMG="${{ env.IMAGE_REPO }}:${{ env.OPERATOR_VERSION }}"
+          export BUNDLE_IMG="${{ env.IMAGE_REPO }}-bundle:${{ env.OPERATOR_VERSION }}"
+          make docker-build docker-push
+          make bundle
+          make bundle-build bundle-push
 
-    # Increment the version number by a minor release
-    - name: Increment minor version number
-      id: increment_minor_version
-      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'minor' }}
-      run: echo "::set-env name=OPERATOR_VERSION::$(semver -i minor ${{ env.OPERATOR_VERSION }})"
-
-    # Increment the version number by a patch release
-    - name: Increment patch version number
-      id: increment_patch_version
-      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump == 'patch' }}
-      run: echo "::set-env name=OPERATOR_VERSION::$(semver -i patch ${{ env.OPERATOR_VERSION }})"
-
-    - name: buildah
-      uses: ./.github/actions/buildah
-      with:
-        IMAGE_REPO: ${{ env.IMAGE_REPO }}
-        VERSION_TAG: ${{ env.OPERATOR_VERSION }}
-
-    - name: operator
-      uses: ./.github/actions/operator
-      with:
-        IMAGE_REPO: ${{ env.IMAGE_REPO }}
-        VERSION_TAG: ${{ env.OPERATOR_VERSION }}
+  release:
+    needs: [prepare, buildah, operator]
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_REPO: ${{ needs.prepare.outputs.IMAGE_REPO }}
+      OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
+    if: github.ref == 'refs/heads/main' && needs.prepare.outputs.IS_RELEASE == 'true'
+    steps:
+      # Create a new release on GitHub with the semantic version number
+      - name: Create Release
+        uses: ncipollo/release-action@v1.12.0
+        with:
+          allowUpdates: true
+          draft: true
+          makeLatest: true
+          name: ${{ env.OPERATOR_VERSION }}
+          body: Changelog Contents
+          token: ${{ github.token }}
