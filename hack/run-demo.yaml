@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: run
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
+      containers:
+      - name: run
+        image: python:latest
+        command:
+        - "sh"
+        args:
+        - "/mnt/init.sh"
+        resources: {}
+        volumeMounts:
+        - mountPath: /mnt
+          name: volume
+        - mountPath: /home/someone
+          name: someone
+        env:
+        - name: INPUT_DATA_PATH
+          value: "/home/someone/data/"
+        - name: INPUT_DATA_URL
+          value: "https://huggingface.co/datasets/aliabd/hello-world/raw/main/data.csv"
+        - name: INPUT_DATA_TRANSFORM_COMMAND
+          value: ""
+        - name: OUTPUT_DATA_PATH
+          value: "/home/someone/output/"
+        - name: REPOSITORY_PATH
+          value: "/home/someone/repo/"
+        - name: REPOSITORY_RUN_COMMAND
+          value: "python3 /mnt/example.py"
+      volumes:
+      - name: volume
+        configMap:
+          name: scripts
+          defaultMode: 0500
+      - name: someone
+        emptyDir:
+          medium: Memory
+      restartPolicy: Never
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scripts
+data:
+  init.sh: |
+    #!/bin/bash
+    mkdir -p $INPUT_DATA_PATH                                     # create input data directory
+    wget --directory-prefix=$INPUT_DATA_PATH $INPUT_DATA_URL      # download input data into the input data directory
+    (cd $INPUT_DATA_PATH && eval $INPUT_DATA_TRANSFORM_COMMAND)   # execute the transform command in the input data directory
+    mkdir -p $OUTPUT_DATA_PATH                                    # create the output data directory
+    mkdir -p $REPOSITORY_PATH                                     # create repository directory
+    (cd $REPOSITORY_PATH && eval $REPOSITORY_RUN_COMMAND)         # execute the run command in the repo root directory
+  example.py: |
+    with open('/home/someone/data/data.csv', 'r') as f:
+        with open('/home/someone/output/output.csv', 'w') as f2:
+            f2.write('hello world')
+            for line in f:
+                print(line)
+                f2.write(line)
+immutable: true
