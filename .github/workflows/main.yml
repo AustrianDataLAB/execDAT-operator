@@ -37,13 +37,15 @@ jobs:
       - name: Set OPERATOR_VERSION
         id: SET_OPERATOR_VERSION
         uses: actions/github-script@v6
+        env:
+          NEXT: ${{ steps.semver.outputs.next }}
         with:
           result-encoding: string
           script: |
-            const {GITHUB_REF_NAME} = process.env
+            const {GITHUB_REF_NAME,NEXT} = process.env
             let OPERATOR_VERSION = GITHUB_REF_NAME
-            if (${{ steps.semver.outputs.next }}) {
-              OPERATOR_VERSION = ${{ steps.semver.outputs.next }}
+            if (NEXT) {
+              OPERATOR_VERSION = NEXT
               core.setOutput('IS_RELEASE', true)
             }
             core.setOutput('OPERATOR_VERSION', OPERATOR_VERSION)
