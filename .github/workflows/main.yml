@@ -2,7 +2,7 @@
 name: Build and Release operator
 run-name: Build/Release operator triggerd by ${{ github.actor }} - ${{ github.event.head_commit.message }}
 
-on: [push, pull_request, workflow_dispatch]
+on: [push, pull_request]
 
 env:
   IMAGE_REGISTRY: ghcr.io

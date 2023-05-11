@@ -29,7 +29,7 @@ type BuildSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Build. Edit build_types.go to remove/update
-	Image       string         `json:"image"`
+	BaseImage   string         `json:"baseimage"`
 	Description string         `json:"description,omitempty"`
 	SourceCode  SourceCodeSpec `json:"sourcecode"`
 }
