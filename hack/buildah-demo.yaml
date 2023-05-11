@@ -1,0 +1,111 @@
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: buildah
+spec:
+  privileged: false # Don't allow privileged pods!
+  supplementalGroups:
+    ranges:
+    - max: 65535
+      min: 1
+    rule: MustRunAs
+  runAsUser:
+    rule: MustRunAsNonRoot
+  volumes:
+    - configMap
+  fsGroup:
+    ranges:
+      - max: 65535
+        min: 1
+    rule: MustRunAs
+  allowedCapabilities:
+    - SETGID
+    - SETUID
+  seLinux:
+    rule: RunAsAny
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: buildah
+rules:
+- apiGroups: ['policy']
+  resources: ['podsecuritypolicies']
+  verbs:     ['use']
+  resourceNames:
+  - buildah
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: buildah
+roleRef:
+  kind: Role
+  name: buildah
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  # Authorize all service accounts in a namespace (recommended):
+  - kind: Group
+    name: system:serviceaccounts
+    apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: buildah
+automountServiceAccountToken: false
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: buildah
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      serviceAccountName: buildah
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: buildah
+          image: ghcr.io/austriandatalab/execdat-operator-buildah:main
+          command:
+            - "buildah"
+          args:
+            - "build"
+            - "-t"
+            - "test"
+            - "-f"
+            - "/mnt/Dockerfile"
+          securityContext:
+            capabilities:
+              add:
+                - SETGID
+                - SETUID
+          resources: {}
+          volumeMounts:
+            - mountPath: /mnt
+              name: volume
+      volumes:
+        - name: volume
+          configMap:
+            name: dockerfile
+      restartPolicy: Never
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dockerfile
+data:
+  Dockerfile: |
+    FROM ghcr.io/austriandatalab/execdat-operator-buildah:main
+    WORKDIR /home/buildah
+    # Just keep the container running
+    CMD ["sleep", "infinity"]
