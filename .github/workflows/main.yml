@@ -54,12 +54,23 @@ jobs:
         with:
           result-encoding: string
           script: |
-            const {GITHUB_REF_NAME,NEXT} = process.env
+            const {GITHUB_REF_NAME,GITHUB_HEAD_REF,NEXT} = process.env
             let OPERATOR_VERSION = GITHUB_REF_NAME
+
+            # if run is triggerd by a pull request use GITHUB_HEAD_REF
+            if (GITHUB_HEAD_REF) {
+              OPERATOR_VERSION = GITHUB_HEAD_REF
+            }
+
+            # remove any non alphanumeric characters
+            OPERATOR_VERSION = OPERATOR_VERSION.replace(/[^a-zA-Z0-9]/g, '-')
+  
+            # if run is triggerd on main use the next tag
             if (NEXT) {
               OPERATOR_VERSION = NEXT
               core.setOutput('IS_RELEASE', true)
             }
+
             core.setOutput('OPERATOR_VERSION', OPERATOR_VERSION)
 
   buildah:
