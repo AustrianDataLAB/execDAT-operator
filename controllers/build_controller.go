@@ -136,7 +136,9 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	err := r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: resourceNamespace}, foundConfigMap)
 	if err != nil && errors.IsNotFound(err) {
 		log.V(1).Info("Creating CM", "ConfigMap", cm.Name)
-		err = r.Create(ctx, cm)
+		if create_err := r.Create(ctx, cm); create_err != nil {
+			return ctrl.Result{}, create_err
+		}
 	} else if err == nil {
 		log.V(1).Info("ConfigMap already created", "ConfiMap", cm.Name)
 	}
