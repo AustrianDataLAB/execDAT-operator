@@ -7,8 +7,10 @@ on:
     branches:
       - main
       - dev
-    tags:
-      - "*" # Any tag
+      - feature/**
+      - hotfix/**
+      - fix/**
+      - issue/**
     paths-ignore:
       - README.md
       - CHANGELOG.md # Should never be edited anyway
@@ -17,7 +19,6 @@ on:
   pull_request_target:
     branches:
       - main
-      - dev
     types:
       - closed
   workflow_dispatch:
@@ -47,7 +48,7 @@ jobs:
       - name: Get Next Version
         id: semver
         if: github.ref_name == 'main'
-        continue-on-error: true
+        continue-on-error: false
         uses: ietf-tools/semver-action@v1
         with:
           token: ${{ github.token }}
