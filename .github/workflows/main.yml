@@ -154,10 +154,17 @@ jobs:
     needs: [prepare, buildah, operator]
     runs-on: ubuntu-latest
     env:
-      IMAGE_REPO: ${{ needs.prepare.outputs.IMAGE_REPO }}
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
     if: github.ref_name == 'main' && needs.prepare.outputs.IS_RELEASE == 'true'
+    permissions:
+      contents: write
     steps:
+      - name: Update CHANGELOG
+        id: changelog
+        uses: requarks/changelog-action@v1.8.0
+        with:
+          token: ${{ github.token }}
+          tag: ${{ github.ref_name }}
       # Create a new release on GitHub with the semantic version number
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0
@@ -165,6 +172,21 @@ jobs:
           allowUpdates: true
           draft: true
           makeLatest: true
-          name: ${{ env.OPERATOR_VERSION }}
-          body: Changelog Contents
+          name: "Release: ${{ env.OPERATOR_VERSION }}"
+          body: |
+            # Version
+            ${{ env.OPERATOR_VERSION }}
+
+            # Changelog
+            ${{ steps.changelog.outputs.changes }}
           token: ${{ github.token }}
+          commit: main
+          tag: ${{ env.OPERATOR_VERSION }}
+          generateReleaseNotes: true
+
+      - name: Commit CHANGELOG.md
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          branch: main
+          commit_message: 'docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]'
+          file_pattern: CHANGELOG.md
