@@ -137,7 +137,7 @@ PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
 docker-buildx: test create-buildx ## Build and push docker image for the manager for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
+	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMG}  --cache-to type=registry,ref=${IMAGE_TAG_BASE}:cache,oci-mediatypes=true,compression=zstd,mode=max --cache-from type=registry,ref=${IMAGE_TAG_BASE}:cache -f Dockerfile.cross .
 	rm Dockerfile.cross
 
 ##@ Deployment
@@ -214,7 +214,7 @@ bundle-push: ## Push the bundle image.
 bundle-buildx: test create-buildx ## Build and push docker image for the manager for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' bundle.Dockerfile > bundle.Dockerfile.cross
-	- docker buildx build --push --platform=$(PLATFORMS) --tag ${BUNDLE_IMG} -f bundle.Dockerfile.cross .
+	- docker buildx build --push --platform=$(PLATFORMS) --tag ${BUNDLE_IMG} --cache-to type=registry,ref=${IMAGE_TAG_BASE}-bundle:cache,oci-mediatypes=true,compression=zstd,mode=max --cache-from type=registry,ref=${IMAGE_TAG_BASE}-bundle:cache -f bundle.Dockerfile.cross .
 	rm bundle.Dockerfile.cross
 
 .PHONY: create-buildx
