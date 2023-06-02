@@ -144,13 +144,14 @@ jobs:
         shell: bash
         env:
           DOCKER_BUILDKIT: "1" # Enable Docker Buildkit
+          PLATFORMS: linux/amd64,linux/arm64
         run: |
           echo "Building bundle"
           export IMG="${{ env.IMAGE_REPO }}:${{ env.OPERATOR_VERSION }}"
           export BUNDLE_IMG="${{ env.IMAGE_REPO }}-bundle:${{ env.OPERATOR_VERSION }}"
-          make docker-build docker-push
+          make docker-buildx
           make bundle
-          make bundle-build bundle-push
+          make bundle-buildx
 
   release:
     needs: [prepare, buildah, operator]
@@ -168,7 +169,8 @@ jobs:
         uses: requarks/changelog-action@v1.8.0
         with:
           token: ${{ github.token }}
-          fromTag: ${{ env.current }}
+          fromTag: ${{ github.ref_name }}
+          toTag: ${{ env.current }}
       # Create a new release on GitHub with the semantic version number
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0
