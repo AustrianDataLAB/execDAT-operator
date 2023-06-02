@@ -3,18 +3,24 @@ name: Build and Release operator
 run-name: Build/Release operator triggerd by ${{ github.actor }} - ${{ github.event.head_commit.message }}
 
 on:
-  pull_request:
-    branches:    
-      - main
-      - dev
   push:
-    # Sequence of patterns matched against refs/heads
-    branches:    
+    branches:
       - main
       - dev
-    # Sequence of patterns matched against refs/tags
     tags:
       - "*" # Any tag
+    paths-ignore:
+      - README.md
+      - CHANGELOG.md # Should never be edited anyway
+      - .gitignore
+      - .github/**
+  pull_request_target:
+    branches:
+      - main
+      - dev
+    types:
+      - closed
+  workflow_dispatch:
 
 env:
   IMAGE_REGISTRY: ghcr.io
@@ -22,6 +28,7 @@ env:
 
 jobs:
   prepare:
+    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     outputs:
       IMAGE_REPO: ${{ steps.SET_IMAGE_REPO.outputs.IMAGE_REPO }}
@@ -39,7 +46,7 @@ jobs:
 
       - name: Get Next Version
         id: semver
-        if: github.ref == 'refs/heads/main'
+        if: github.ref_name == 'main'
         continue-on-error: true
         uses: ietf-tools/semver-action@v1
         with:
@@ -75,6 +82,7 @@ jobs:
 
   buildah:
     needs: prepare
+    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     services:
       docker:
@@ -104,6 +112,7 @@ jobs:
 
   operator:
     needs: prepare
+    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     services:
       docker:
@@ -146,7 +155,7 @@ jobs:
     env:
       IMAGE_REPO: ${{ needs.prepare.outputs.IMAGE_REPO }}
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
-    if: github.ref == 'refs/heads/main' && needs.prepare.outputs.IS_RELEASE == 'true'
+    if: github.ref_name == 'main' && needs.prepare.outputs.IS_RELEASE == 'true'
     steps:
       # Create a new release on GitHub with the semantic version number
       - name: Create Release
