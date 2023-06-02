@@ -76,13 +76,9 @@ spec:
         - name: buildah
           image: ghcr.io/austriandatalab/execdat-operator-buildah:main
           command:
-            - "buildah"
+          - "sh"
           args:
-            - "build"
-            - "-t"
-            - "test"
-            - "-f"
-            - "/mnt/Dockerfile"
+          - "/mnt/init.sh"
           securityContext:
             capabilities:
               add:
@@ -92,10 +88,12 @@ spec:
           volumeMounts:
             - mountPath: /mnt
               name: volume
+
       volumes:
         - name: volume
           configMap:
             name: dockerfile
+            defaultMode: 0744
       restartPolicy: Never
 
 ---
@@ -109,3 +107,12 @@ data:
     WORKDIR /home/buildah
     # Just keep the container running
     CMD ["sleep", "infinity"]
+  init.sh: |
+    #!/bin/bash
+    export BUILD="$(buildah from ubuntu)"
+    buildah run $BUILD apt update
+    buildah run $BUILD apt install curl
+    buildah config --entrypoint "/usr/sbin/httpd -DFOREGROUND" $BUILD
+    buildah commit $BUILD $OUTPUT
+    buildah push --tls-verify=false --creds $USER:$PASS $OUTPUT docker://localhost:5000/$USER/$OUTPUT
+

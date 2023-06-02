@@ -24,3 +24,9 @@ Dockerfile.cross
 *.swp
 *.swo
 *~
+
+# MacOS
+.DS_Store
+
+# go
+vendor

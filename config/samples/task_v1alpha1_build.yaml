@@ -9,4 +9,16 @@ metadata:
     app.kubernetes.io/created-by: execdat-operator
   name: build-sample
 spec:
-  # TODO(user): Add fields here
+  baseimage: "python:latest"
+  description: "default image for demos"
+  sourcecode:
+    url: "https://github.com/AustrianDataLAB/execDAT"
+    branch: "main"
+    dependencies:
+      os:
+        - name: curl
+          version: latest
+      pip:
+        - name: pandas
+          version: latest
+    entrypoint: python

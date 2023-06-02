@@ -65,7 +65,7 @@ func main() {
 	var err error
 	options := ctrl.Options{Scheme: scheme}
 	if configFile != "" {
-		options, err = options.AndFrom(ctrl.ConfigFile().AtPath(configFile))
+		options, err = options.AndFrom(ctrl.ConfigFile().AtPath(configFile)) //nolint:staticcheck
 		if err != nil {
 			setupLog.Error(err, "unable to load the config file")
 			os.Exit(1)

@@ -7,8 +7,8 @@ type GenericDependencySpec struct {
 
 type DependenciesSpec struct {
 	OS     []GenericDependencySpec `json:"os,omitempty" description:"Not yet implemented"`
-	Pip    []GenericDependencySpec `json:"python,omitempty" description:"Not yet implemented"`
-	Go     []GenericDependencySpec `json:"golang,omitempty" description:"Not yet implemented"`
+	Pip    []GenericDependencySpec `json:"pip,omitempty" description:"Not yet implemented"`
+	Go     []GenericDependencySpec `json:"go,omitempty" description:"Not yet implemented"`
 	Cargo  []GenericDependencySpec `json:"cargo,omitempty" description:"Not yet implemented"`
 	NPM    []GenericDependencySpec `json:"npm,omitempty" description:"Not yet implemented"`
 	Yarn   []GenericDependencySpec `json:"yarn,omitempty" description:"Not yet implemented"`
@@ -24,7 +24,7 @@ type SourceCodeSpec struct {
 	Dependencies  DependenciesSpec `json:"dependencies,omitempty"`
 	DependencyCMD string           `json:"dependencycmd,omitempty"`
 	BuildCMD      string           `json:"buildcmd,omitempty"`
-	EntryPoint    string           `json:"entrypoint"`
+	Entrypoint    string           `json:"entrypoint"`
 }
 
 type InputDataSpec struct {

@@ -34,11 +34,11 @@ spec:
           spec:
             description: BuildSpec defines the desired state of Build
             properties:
-              description:
-                type: string
-              image:
+              baseimage:
                 description: Foo is an example field of Build. Edit build_types.go
                   to remove/update
+                type: string
+              description:
                 type: string
               sourcecode:
                 properties:
@@ -74,7 +74,7 @@ spec:
                           - version
                           type: object
                         type: array
-                      golang:
+                      go:
                         items:
                           properties:
                             name:
@@ -134,7 +134,7 @@ spec:
                           - version
                           type: object
                         type: array
-                      python:
+                      pip:
                         items:
                           properties:
                             name:
@@ -170,7 +170,7 @@ spec:
                 - url
                 type: object
             required:
-            - image
+            - baseimage
             - sourcecode
             type: object
           status:

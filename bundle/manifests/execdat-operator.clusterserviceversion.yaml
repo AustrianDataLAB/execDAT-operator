@@ -17,7 +17,29 @@ metadata:
             },
             "name": "build-sample"
           },
-          "spec": null
+          "spec": {
+            "baseimage": "python:latest",
+            "description": "default image for demos",
+            "sourcecode": {
+              "branch": "main",
+              "dependencies": {
+                "os": [
+                  {
+                    "name": "curl",
+                    "version": "latest"
+                  }
+                ],
+                "pip": [
+                  {
+                    "name": "pandas",
+                    "version": "latest"
+                  }
+                ]
+              },
+              "entrypoint": "python",
+              "url": "https://github.com/AustrianDataLAB/execDAT"
+            }
+          }
         },
         {
           "apiVersion": "task.execd.at/v1alpha1",
@@ -36,8 +58,8 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2023-04-29T08:44:51Z"
-    operators.operatorframework.io/builder: operator-sdk-v1.28.0
+    createdAt: "2023-05-11T14:14:37Z"
+    operators.operatorframework.io/builder: operator-sdk-v1.28.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4-alpha
   name: execdat-operator.v0.0.1
   namespace: placeholder
@@ -64,6 +86,38 @@ spec:
     spec:
       clusterPermissions:
       - rules:
+        - resources:
+          - configmaps
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - resources:
+          - configmaps/status
+          verbs:
+          - get
+        - apiGroups:
+          - batch
+          resources:
+          - jobs
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - batch
+          resources:
+          - jobs/status
+          verbs:
+          - get
         - apiGroups:
           - task.execd.at
           resources:
@@ -173,7 +227,7 @@ spec:
                 - --config=controller_manager_config.yaml
                 command:
                 - /manager
-                image: execd.at/operator:latest
+                image: controller:latest
                 livenessProbe:
                   httpGet:
                     path: /healthz

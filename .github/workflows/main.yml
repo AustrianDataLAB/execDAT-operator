@@ -2,14 +2,33 @@
 name: Build and Release operator
 run-name: Build/Release operator triggerd by ${{ github.actor }} - ${{ github.event.head_commit.message }}
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - "*" # Any tag
+    paths-ignore:
+      - README.md
+      - CHANGELOG.md # Should never be edited anyway
+      - .gitignore
+      - .github/**
+  pull_request_target:
+    branches:
+      - main
+      - dev
+    types:
+      - closed
+  workflow_dispatch:
 
 env:
   IMAGE_REGISTRY: ghcr.io
-  OPERATOR_SDK_VERSION: v1.28.0
+  OPERATOR_SDK_VERSION: v1.29.0
 
 jobs:
   prepare:
+    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     outputs:
       IMAGE_REPO: ${{ steps.SET_IMAGE_REPO.outputs.IMAGE_REPO }}
@@ -27,7 +46,7 @@ jobs:
 
       - name: Get Next Version
         id: semver
-        if: github.ref == 'refs/heads/main'
+        if: github.ref_name == 'main'
         continue-on-error: true
         uses: ietf-tools/semver-action@v1
         with:
@@ -42,16 +61,28 @@ jobs:
         with:
           result-encoding: string
           script: |
-            const {GITHUB_REF_NAME,NEXT} = process.env
+            const {GITHUB_REF_NAME,GITHUB_HEAD_REF,NEXT} = process.env
             let OPERATOR_VERSION = GITHUB_REF_NAME
+
+            // if run is triggerd by a pull request use GITHUB_HEAD_REF
+            if (GITHUB_HEAD_REF) {
+              OPERATOR_VERSION = GITHUB_HEAD_REF
+            }
+
+            // remove any non alphanumeric characters
+            OPERATOR_VERSION = OPERATOR_VERSION.replace(/[^a-zA-Z0-9]/g, '-')
+  
+            // if run is triggerd on main use the next tag
             if (NEXT) {
               OPERATOR_VERSION = NEXT
               core.setOutput('IS_RELEASE', true)
             }
+
             core.setOutput('OPERATOR_VERSION', OPERATOR_VERSION)
 
   buildah:
     needs: prepare
+    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     services:
       docker:
@@ -81,6 +112,7 @@ jobs:
 
   operator:
     needs: prepare
+    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     services:
       docker:
@@ -123,7 +155,7 @@ jobs:
     env:
       IMAGE_REPO: ${{ needs.prepare.outputs.IMAGE_REPO }}
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
-    if: github.ref == 'refs/heads/main' && needs.prepare.outputs.IS_RELEASE == 'true'
+    if: github.ref_name == 'main' && needs.prepare.outputs.IS_RELEASE == 'true'
     steps:
       # Create a new release on GitHub with the semantic version number
       - name: Create Release
