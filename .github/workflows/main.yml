@@ -1,6 +1,6 @@
 # main.yml
 name: Build and Release operator
-run-name: Build/Release operator triggerd by ${{ github.actor }} - ${{ github.event.head_commit.message }}${{ github.event.pull_request.title }}
+run-name: ${{ github.actor }} triggerd -> ${{ github.event.head_commit.message }}${{ github.event.pull_request.title }}
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
     if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     outputs:
-      IMAGE_REPO: ${{ steps.SET_IMAGE_REPO.outputs.IMAGE_REPO }}
+      IMAGE_TAG_BASE: ${{ steps.SET_IMAGE_TAG_BASE.outputs.IMAGE_TAG_BASE }}
       OPERATOR_VERSION: ${{ steps.SET_OPERATOR_VERSION.outputs.OPERATOR_VERSION }}
       IS_RELEASE: ${{ steps.SET_OPERATOR_VERSION.outputs.IS_RELEASE }}
       current: ${{ steps.semver.outputs.current }}
@@ -43,9 +43,9 @@ jobs:
 
       - name: Export Repo Name lowercase
         run: echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
-      - name: Set IMAGE_REPO
-        id: SET_IMAGE_REPO
-        run: echo "IMAGE_REPO=${{ env.IMAGE_REGISTRY }}/${{ env.REPO }}" >>${GITHUB_OUTPUT}
+      - name: Set IMAGE_TAG_BASE
+        id: SET_IMAGE_TAG_BASE
+        run: echo "IMAGE_TAG_BASE=${{ env.IMAGE_REGISTRY }}/${{ env.REPO }}" >>${GITHUB_OUTPUT}
 
       - name: Get Next Version
         id: semver
@@ -91,7 +91,7 @@ jobs:
       docker:
         image: docker:dind
     env:
-      IMAGE_REPO: ${{ needs.prepare.outputs.IMAGE_REPO }}
+      IMAGE_TAG_BASE: ${{ needs.prepare.outputs.IMAGE_TAG_BASE }}
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
     steps:
       - name: Set up QEMU
@@ -111,7 +111,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           file: "Dockerfile.buildah.k8s.rootless"
           push: true
-          tags: ${{ env.IMAGE_REPO }}-buildah:${{ env.OPERATOR_VERSION }}
+          tags: ${{ env.IMAGE_TAG_BASE }}-buildah:${{ env.OPERATOR_VERSION }}
 
   operator:
     needs: prepare
@@ -121,8 +121,10 @@ jobs:
       docker:
         image: docker:dind
     env:
-      IMAGE_REPO: ${{ needs.prepare.outputs.IMAGE_REPO }}
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
+      IMAGE_TAG_BASE: ${{ needs.prepare.outputs.IMAGE_TAG_BASE }}
+      IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
+      BUNDLE_IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}-bundle:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -144,13 +146,11 @@ jobs:
         shell: bash
         env:
           DOCKER_BUILDKIT: "1" # Enable Docker Buildkit
+          PLATFORMS: linux/amd64,linux/arm64
         run: |
           echo "Building bundle"
-          export IMG="${{ env.IMAGE_REPO }}:${{ env.OPERATOR_VERSION }}"
-          export BUNDLE_IMG="${{ env.IMAGE_REPO }}-bundle:${{ env.OPERATOR_VERSION }}"
-          make docker-build docker-push
-          make bundle
-          make bundle-build bundle-push
+          make docker-buildx
+          make bundle bundle-buildx
 
   release:
     needs: [prepare, buildah, operator]
@@ -168,7 +168,8 @@ jobs:
         uses: requarks/changelog-action@v1.8.0
         with:
           token: ${{ github.token }}
-          fromTag: ${{ env.current }}
+          fromTag: ${{ github.ref_name }}
+          toTag: ${{ env.current }}
       # Create a new release on GitHub with the semantic version number
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0
