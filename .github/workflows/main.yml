@@ -1,6 +1,6 @@
 # main.yml
 name: Build and Release operator
-run-name: Build/Release operator triggerd by ${{ github.actor }} - ${{ github.event.head_commit.message }}
+run-name: Build/Release operator triggerd by ${{ github.actor }} - ${{ github.event.head_commit.message }}${{ github.event.pull_request.title }}
 
 on:
   push:
@@ -35,6 +35,8 @@ jobs:
       IMAGE_REPO: ${{ steps.SET_IMAGE_REPO.outputs.IMAGE_REPO }}
       OPERATOR_VERSION: ${{ steps.SET_OPERATOR_VERSION.outputs.OPERATOR_VERSION }}
       IS_RELEASE: ${{ steps.SET_OPERATOR_VERSION.outputs.IS_RELEASE }}
+      current: ${{ steps.semver.outputs.current }}
+      next: ${{ steps.semver.outputs.next }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -58,7 +60,7 @@ jobs:
         id: SET_OPERATOR_VERSION
         uses: actions/github-script@v6
         env:
-          NEXT: ${{ steps.semver.outputs.next }}
+          NEXT: ${{ steps.semver.outputs.next }}          
         with:
           result-encoding: string
           script: |
@@ -155,6 +157,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
+      current: ${{ needs.prepare.outputs.current }}
+      next: ${{ needs.prepare.outputs.next }}
     if: github.ref_name == 'main' && needs.prepare.outputs.IS_RELEASE == 'true'
     permissions:
       contents: write
@@ -164,7 +168,7 @@ jobs:
         uses: requarks/changelog-action@v1.8.0
         with:
           token: ${{ github.token }}
-          tag: ${{ github.ref_name }}
+          fromTag: ${{ env.current }}
       # Create a new release on GitHub with the semantic version number
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0
@@ -174,13 +178,20 @@ jobs:
           makeLatest: true
           name: "Release: ${{ env.OPERATOR_VERSION }}"
           body: |
-            # Version
-            ${{ env.OPERATOR_VERSION }}
+            # Install new operator version
+
+            operator-sdk run bundle ghcr.io/austriandatalab/execdat-operator-bundle:${{ env.OPERATOR_VERSION }}
+
+            # Pull new images
+            
+            docker pull ghcr.io/austriandatalab/execdat-operator-bundle:${{ env.OPERATOR_VERSION }}
+            docker pull ghcr.io/austriandatalab/execdat-operator-buildah:${{ env.OPERATOR_VERSION }}
+            docker pull ghcr.io/austriandatalab/execdat-operator:${{ env.OPERATOR_VERSION }}
 
             # Changelog
             ${{ steps.changelog.outputs.changes }}
           token: ${{ github.token }}
-          commit: main
+          commit: ${{ github.sha }}
           tag: ${{ env.OPERATOR_VERSION }}
           generateReleaseNotes: true
 
