@@ -137,7 +137,7 @@ jobs:
     env:
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
       OPERATOR_VERSION_STRICT: ${{ needs.prepare.outputs.OPERATOR_VERSION_STRICT }}
-      VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION_STRICT }} //needed for make file
+      VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION_STRICT }}
       IMAGE_TAG_BASE: ${{ needs.prepare.outputs.IMAGE_TAG_BASE }}
       IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
       BUNDLE_IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}-bundle:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
