@@ -73,7 +73,6 @@ jobs:
               GITHUB_HEAD_REF,
               NEXT,
               NEXT_STRICT,
-              CURRENT,
             } = process.env
 
             let OPERATOR_VERSION = GITHUB_REF_NAME
@@ -85,8 +84,8 @@ jobs:
             }
 
             // remove any non alphanumeric characters
-            OPERATOR_VERSION = CURRENT + '-' + OPERATOR_VERSION.replace(/[^a-zA-Z0-9]/g, '-')
-            OPERATOR_VERSION_STRICT = CURRENT.replace(/[^v]/g, '') + '-' + OPERATOR_VERSION_STRICT.replace(/[^a-zA-Z0-9]/g, '-')
+            OPERATOR_VERSION = NEXT + '-' + OPERATOR_VERSION.replace(/[^a-zA-Z0-9]/g, '-')
+            OPERATOR_VERSION_STRICT = NEXT_STRICT + '-' + OPERATOR_VERSION_STRICT.replace(/[^a-zA-Z0-9]/g, '-')
   
             // if run is triggerd on main use the next tag
             if (OPERATOR_VERSION == 'main') {
