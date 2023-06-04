@@ -1,6 +1,6 @@
 # main.yml
 name: Build and Release operator
-run-name: ${{ github.actor }} triggerd -> ${{ github.event.head_commit.message }}${{ github.event.pull_request.title }}
+run-name: ${{ github.actor }} triggerd -> ${{ github.event_name }} ${{ github.event.head_commit.message }}${{ github.event.pull_request.title }}
 
 on:
   push:
@@ -28,7 +28,7 @@ env:
 
 jobs:
   prepare:
-    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
+    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
       IMAGE_TAG_BASE: ${{ steps.SET_IMAGE_TAG_BASE.outputs.IMAGE_TAG_BASE }}
@@ -90,7 +90,7 @@ jobs:
 
   buildah:
     needs: prepare
-    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
+    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     services:
       docker:
