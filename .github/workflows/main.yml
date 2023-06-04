@@ -33,9 +33,11 @@ jobs:
     outputs:
       IMAGE_TAG_BASE: ${{ steps.SET_IMAGE_TAG_BASE.outputs.IMAGE_TAG_BASE }}
       OPERATOR_VERSION: ${{ steps.SET_OPERATOR_VERSION.outputs.OPERATOR_VERSION }}
+      OPERATOR_VERSION_STRICT: ${{ steps.SET_OPERATOR_VERSION.outputs.OPERATOR_VERSION_STRICT }}
       IS_RELEASE: ${{ steps.SET_OPERATOR_VERSION.outputs.IS_RELEASE }}
-      current: ${{ steps.semver.outputs.current }}
-      next: ${{ steps.semver.outputs.next }}
+      CURRENT: ${{ steps.semver.outputs.current }}
+      NEXT: ${{ steps.semver.outputs.next }}
+      NEXT_STRICT: ${{ steps.semver.outputs.nextStrict }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -59,11 +61,12 @@ jobs:
         id: SET_OPERATOR_VERSION
         uses: actions/github-script@v6
         env:
-          NEXT: ${{ steps.semver.outputs.next }}          
+          NEXT: ${{ steps.semver.outputs.next }}
+          NEXT_STRICT: ${{ steps.semver.outputs.nextStrict }}
         with:
           result-encoding: string
           script: |
-            const {GITHUB_REF_NAME,GITHUB_HEAD_REF,NEXT} = process.env
+            const {GITHUB_REF_NAME,GITHUB_HEAD_REF,NEXT,NEXT_STRICT} = process.env
             let OPERATOR_VERSION = GITHUB_REF_NAME
 
             // if run is triggerd by a pull request use GITHUB_HEAD_REF
@@ -75,12 +78,14 @@ jobs:
             OPERATOR_VERSION = OPERATOR_VERSION.replace(/[^a-zA-Z0-9]/g, '-')
   
             // if run is triggerd on main use the next tag
-            if (NEXT) {
+            if (NEXT_STRICT && NEXT) {
               OPERATOR_VERSION = NEXT
+              OPERATOR_VERSION_STRICT = NEXT_STRICT
               core.setOutput('IS_RELEASE', true)
             }
 
             core.setOutput('OPERATOR_VERSION', OPERATOR_VERSION)
+            core.setOutput('OPERATOR_VERSION_STRICT', OPERATOR_VERSION_STRICT)
 
   buildah:
     needs: prepare
@@ -121,6 +126,8 @@ jobs:
         image: docker:dind
     env:
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
+      OPERATOR_VERSION_STRICT: ${{ needs.prepare.outputs.OPERATOR_VERSION_STRICT }}
+      VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION_STRICT }} //needed for make file
       IMAGE_TAG_BASE: ${{ needs.prepare.outputs.IMAGE_TAG_BASE }}
       IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
       BUNDLE_IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}-bundle:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
@@ -156,8 +163,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
-      current: ${{ needs.prepare.outputs.current }}
-      next: ${{ needs.prepare.outputs.next }}
+      OPERATOR_VERSION_STRICT: ${{ needs.prepare.outputs.OPERATOR_VERSION_STRICT }}
+      CURRENT: ${{ needs.prepare.outputs.CURRENT }}
+      NEXT: ${{ needs.prepare.outputs.NEXT }}
+      NEXT_STRICT: ${{ needs.prepare.outputs.NEXT_STRICT }}
     if: github.ref_name == 'main' && needs.prepare.outputs.IS_RELEASE == 'true'
     permissions:
       contents: write
@@ -168,8 +177,8 @@ jobs:
         with:
           token: ${{ github.token }}
           fromTag: ${{ github.ref_name }}
-          toTag: ${{ env.current }}
-      # Create a new release on GitHub with the semantic version number
+          toTag: ${{ env.CURRENT }}
+      # Create a new release on GitHub with the semantic OPERATOR_VERSION number
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0
         with:
