@@ -49,11 +49,6 @@ func init() {
 }
 
 func main() {
-	var configFile string
-	flag.StringVar(&configFile, "config", "",
-		"The controller will load its initial configuration from this file. "+
-			"Omit this flag to use the default configuration values. "+
-			"Command-line flags override configuration from this file.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -64,13 +59,6 @@ func main() {
 
 	var err error
 	options := ctrl.Options{Scheme: scheme}
-	if configFile != "" {
-		options, err = options.AndFrom(ctrl.ConfigFile().AtPath(configFile)) //nolint:staticcheck
-		if err != nil {
-			setupLog.Error(err, "unable to load the config file")
-			os.Exit(1)
-		}
-	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
