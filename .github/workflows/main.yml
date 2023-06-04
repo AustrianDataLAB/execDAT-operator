@@ -51,7 +51,6 @@ jobs:
 
       - name: Get Next Version
         id: semver
-        if: github.ref_name == 'main'
         continue-on-error: false
         uses: ietf-tools/semver-action@v1
         with:
@@ -92,7 +91,7 @@ jobs:
 
   
             // if run is triggerd on main use the next tag
-            if (NEXT_STRICT && NEXT) {
+            if (OPERATOR_VERSION == 'main') {
               OPERATOR_VERSION = NEXT
               OPERATOR_VERSION_STRICT = NEXT_STRICT
               core.setOutput('IS_RELEASE', true)
