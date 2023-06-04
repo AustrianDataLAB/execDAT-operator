@@ -52,10 +52,11 @@ jobs:
       - name: Get Next Version
         id: semver
         continue-on-error: false
-        uses: ietf-tools/semver-action@v1
+        uses: ietf-tools/semver-action@v1.5.1
         with:
           token: ${{ github.token }}
           branch: main
+          fromTag: ${{ github.ref_name }}
 
       - name: Set OPERATOR_VERSION
         id: SET_OPERATOR_VERSION
