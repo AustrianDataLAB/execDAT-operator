@@ -5,7 +5,6 @@ run-name: ${{ github.actor }} triggerd -> ${{ github.event.head_commit.message }
 on:
   push:
     branches:
-      - main
       - dev
       - feature/**
       - hotfix/**
@@ -181,13 +180,17 @@ jobs:
           body: |
             # Install new operator version
 
+            ```shell
             operator-sdk run bundle ghcr.io/austriandatalab/execdat-operator-bundle:${{ env.OPERATOR_VERSION }}
+            ```
 
             # Pull new images
             
+            ```shell
             docker pull ghcr.io/austriandatalab/execdat-operator-bundle:${{ env.OPERATOR_VERSION }}
             docker pull ghcr.io/austriandatalab/execdat-operator-buildah:${{ env.OPERATOR_VERSION }}
             docker pull ghcr.io/austriandatalab/execdat-operator:${{ env.OPERATOR_VERSION }}
+            ```
 
             # Changelog
             ${{ steps.changelog.outputs.changes }}

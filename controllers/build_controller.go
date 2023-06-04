@@ -40,50 +40,6 @@ type BuildReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-func create_init_sh(spec taskv1alpha1.BuildSpec, IMAGE_NAME string) string {
-	nl := " \n"
-
-	// Declare variable
-	init_sh := fmt.Sprintf(`
-		#!/bin/bash
-		export BUILD="$(buildah from %s)"
-		export ENTRYPOINT="%s"
-		export IMAGE_NAME="%s"
-		export USER="%s"
-		export PASS="%s"
-		export REGISTRY_URL="%s"
-	`,
-		spec.BaseImage,
-		spec.SourceCode.Entrypoint,
-		IMAGE_NAME,
-		"test",
-		"testPW",
-		"localhost:5000")
-
-	init_sh += nl
-
-	// loop over all dependencies and fill init.sh with the commands to install them
-	for i := 0; i < len(spec.SourceCode.Dependencies.OS); i++ {
-		if i == 0 {
-			init_sh += "buildah run $BUILD apt update"
-			init_sh += nl
-		}
-		init_sh += "buildah run $BUILD apt install " + spec.SourceCode.Dependencies.OS[i].Name
-		if spec.SourceCode.Dependencies.OS[i].Version != "" {
-			init_sh += "=" + spec.SourceCode.Dependencies.OS[i].Version
-		}
-		init_sh += nl
-	}
-
-	init_sh += `
-		buildah config --entrypoint "$ENTRYPOINT" $BUILD
-		buildah commit $BUILD $IMAGE_NAME
-		buildah push --tls-verify=false --creds $USER:$PASS $IMAGE_NAME docker://$REGISTRY_URL/$USER/$IMAGE_NAME
-	`
-
-	return init_sh
-}
-
 //+kubebuilder:rbac:groups=task.execd.at,resources=builds,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=task.execd.at,resources=builds/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=task.execd.at,resources=builds/finalizers,verbs=update
@@ -91,27 +47,15 @@ func create_init_sh(spec taskv1alpha1.BuildSpec, IMAGE_NAME string) string {
 //+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=batch,resources=jobs/status,verbs=get
 
-//+kubebuilder:rbac:resources=configmaps,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:resources=configmaps/status,verbs=get
-
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the Build object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
+// +kubebuilder:rbac:resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:resources=configmaps/status,verbs=get
 func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	log := logger.WithValues("taskv1alpha1.Build", req.NamespacedName)
 
-	// TODO(user): your logic here
-
 	build := &taskv1alpha1.Build{}
 	if err := r.Get(ctx, req.NamespacedName, build); err != nil {
-		log.Error(err, "unable to fetch build")
+		log.V(1).Info("unable to fetch build", "build", req.NamespacedName)
 		// we'll ignore not-found errors, since they can't be fixed by an immediate
 		// requeue (we'll need to wait for a new notification), and we can get them
 		// on deleted requests.
@@ -121,26 +65,16 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	var resourceName string = build.Name
 	var resourceNamespace string = build.Namespace
 
-	cm := &kcore.ConfigMap{}
-	cm.Name = resourceName
-	cm.Namespace = resourceNamespace
-	cm.Data = map[string]string{
-		"init.sh": create_init_sh(build.Spec, resourceName+"-"+string(build.UID)),
+	scriptTemplates := []string{"./templates/init.sh.tmpl"}
+	templateData := TemplateData{
+		BaseImage: build.Spec.BaseImage,
+		// GitRepo:   build.Spec.SourceCode.URL,
+		// GitBranch: build.Spec.SourceCode.Branch,
+		// BuildCmd:  build.Spec.SourceCode.BuildCMD,
 	}
-
-	if err := controllerutil.SetControllerReference(build, cm, r.Scheme); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	foundConfigMap := &kcore.ConfigMap{}
-	err := r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: resourceNamespace}, foundConfigMap)
-	if err != nil && errors.IsNotFound(err) {
-		log.V(1).Info("Creating CM", "ConfigMap", cm.Name)
-		if create_err := r.Create(ctx, cm); create_err != nil {
-			return ctrl.Result{}, create_err
-		}
-	} else if err == nil {
-		log.V(1).Info("ConfigMap already created", "ConfiMap", cm.Name)
+	init_sh, err := GenerateScript(scriptTemplates, templateData)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("error generating script: %v", err)
 	}
 
 	podSpec := kcore.PodSpec{}
@@ -149,10 +83,19 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		{
 			Name:    "buildah",
 			Image:   "ghcr.io/austriandatalab/execdat-operator-buildah:main",
-			Command: []string{"sh"},
-			Args:    []string{"/mnt/init.sh"},
+			Command: []string{"/bin/bash", "-c", "--"},
+			Args:    []string{"trap : TERM INT; echo \"$INIT_SH\" | bash"},
 			Env: []kcore.EnvVar{
+				{Name: "INIT_SH", Value: init_sh},
 				{Name: "BASE_IMAGE", Value: build.Spec.BaseImage},
+				// {Name: "IMAGE_NAME", Value: build.Spec.ImageName},
+				// {Name: "IMAGE_TAG", Value: build.Spec.ImageTag},
+				// {Name: "IMAGE_REGISTRY", Value: build.Spec.ImageRegistry},
+				// {Name: "IMAGE_REGISTRY_USER", Value: build.Spec.ImageRegistryUser},
+				// {Name: "IMAGE_REGISTRY_PASSWORD", Value: build.Spec.ImageRegistryPassword},
+				// {Name: "IMAGE_REGISTRY_INSECURE", Value: build.Spec.ImageRegistryInsecure},
+				// {Name: "IMAGE_REGISTRY_VERIFY_TLS", Value: build.Spec.ImageRegistryVerifyTLS},
+				{Name: "ENTRYPOINT", Value: build.Spec.SourceCode.Entrypoint},
 				{Name: "GIT_REPO", Value: build.Spec.SourceCode.URL},
 				{Name: "GIT_BRANCH", Value: build.Spec.SourceCode.Branch},
 				{Name: "BUILD_CMD", Value: build.Spec.SourceCode.BuildCMD},

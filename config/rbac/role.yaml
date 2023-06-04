@@ -5,20 +5,6 @@ metadata:
   creationTimestamp: null
   name: manager-role
 rules:
-- resources:
-  - configmaps
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- resources:
-  - configmaps/status
-  verbs:
-  - get
 - apiGroups:
   - batch
   resources:

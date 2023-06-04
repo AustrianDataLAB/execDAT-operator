@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+
+export BUILD="$(buildah from {{ .BaseImage }})"
+buildah run $BUILD apt update -y
+buildah run $BUILD apt install
+buildah config --entrypoint "$ENTRYPOINT" $BUILD
+buildah commit $BUILD $IMAGE_NAME
+buildah push --tls-verify=false --creds $USER:$PASS $IMAGE_NAME docker://$REGISTRY_URL/$USER/$IMAGE_NAME
