@@ -55,7 +55,7 @@ jobs:
         uses: ietf-tools/semver-action@v1.5.1
         with:
           token: ${{ github.token }}
-          branch: main
+          branch: ${{ github.ref_name }}
           noVersionBumpBehavior: current
 
       - name: Set OPERATOR_VERSION
