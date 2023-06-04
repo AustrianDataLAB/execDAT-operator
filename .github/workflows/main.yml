@@ -56,7 +56,7 @@ jobs:
         with:
           token: ${{ github.token }}
           branch: main
-          fromTag: ${{ github.ref_name }}
+          noVersionBumpBehavior: current
 
       - name: Set OPERATOR_VERSION
         id: SET_OPERATOR_VERSION
