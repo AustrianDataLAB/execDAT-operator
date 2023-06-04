@@ -125,7 +125,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           file: "Dockerfile.buildah.k8s.rootless"
           push: true
-          tags: ${{ env.IMAGE_TAG_BASE }}-buildah:${{ env.OPERATOR_VERSION }}
+          tags: ${{ env.IMAGE_TAG_BASE }}-buildah:${{ env.OPERATOR_VERSION }},${{ env.IMAGE_TAG_BASE }}-buildah:latest
 
   operator:
     needs: prepare
@@ -174,6 +174,9 @@ jobs:
     env:
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
       OPERATOR_VERSION_STRICT: ${{ needs.prepare.outputs.OPERATOR_VERSION_STRICT }}
+      IMAGE_TAG_BASE: ${{ needs.prepare.outputs.IMAGE_TAG_BASE }}
+      IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
+      BUNDLE_IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}-bundle:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
       CURRENT: ${{ needs.prepare.outputs.CURRENT }}
       NEXT: ${{ needs.prepare.outputs.NEXT }}
       NEXT_STRICT: ${{ needs.prepare.outputs.NEXT_STRICT }}
@@ -200,16 +203,16 @@ jobs:
             # Install or upgrade new operator version
 
             ```shell
-            operator-sdk run bundle ghcr.io/austriandatalab/execdat-operator-bundle:${{ env.OPERATOR_VERSION }}
-            operator-sdk run bundle-upgrade ghcr.io/austriandatalab/execdat-operator-bundle:${{ env.OPERATOR_VERSION }}
+            operator-sdk run bundle ${{ env.IMAGE_TAG_BASE }}-bundle:${{ env.OPERATOR_VERSION }}
+            operator-sdk run bundle-upgrade ${{ env.IMAGE_TAG_BASE }}-bundle:${{ env.OPERATOR_VERSION }}
             ```
 
             # Pull new images
             
             ```shell
-            docker pull ghcr.io/austriandatalab/execdat-operator-bundle:${{ env.OPERATOR_VERSION }}
-            docker pull ghcr.io/austriandatalab/execdat-operator-buildah:${{ env.OPERATOR_VERSION }}
-            docker pull ghcr.io/austriandatalab/execdat-operator:${{ env.OPERATOR_VERSION }}
+            docker pull ${{ env.IMAGE_TAG_BASE }}-bundle:${{ env.OPERATOR_VERSION }}
+            docker pull ${{ env.IMAGE_TAG_BASE }}-buildah:${{ env.OPERATOR_VERSION }}
+            docker pull ${{ env.IMAGE_TAG_BASE }}:${{ env.OPERATOR_VERSION }}
             ```
 
             # Changelog
