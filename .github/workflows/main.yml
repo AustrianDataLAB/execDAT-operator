@@ -68,6 +68,7 @@ jobs:
           script: |
             const {GITHUB_REF_NAME,GITHUB_HEAD_REF,NEXT,NEXT_STRICT} = process.env
             let OPERATOR_VERSION = GITHUB_REF_NAME
+            let OPERATOR_VERSION_STRICT = GITHUB_REF_NAME
 
             // if run is triggerd by a pull request use GITHUB_HEAD_REF
             if (GITHUB_HEAD_REF) {
@@ -187,10 +188,11 @@ jobs:
           makeLatest: true
           name: "Release: ${{ env.OPERATOR_VERSION }}"
           body: |
-            # Install new operator version
+            # Install or upgrade new operator version
 
             ```shell
             operator-sdk run bundle ghcr.io/austriandatalab/execdat-operator-bundle:${{ env.OPERATOR_VERSION }}
+            operator-sdk run bundle-upgrade ghcr.io/austriandatalab/execdat-operator-bundle:${{ env.OPERATOR_VERSION }}
             ```
 
             # Pull new images
