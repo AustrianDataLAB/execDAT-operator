@@ -61,9 +61,9 @@ func main() {
 	options := ctrl.Options{Scheme: scheme}
 
 	options.LeaderElection = true
-	options.LeaderElectionID = "execdat-operator-leader-election-id"
-	options.MetricsBindAddress = ":8080"
+	options.LeaderElectionID = "operator-leader-election-id.execd.at"
 	options.HealthProbeBindAddress = ":8081"
+	options.MetricsBindAddress = "127.0.0.1:8080"
 	//options.WebhookServer = TODO
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
