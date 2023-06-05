@@ -60,6 +60,12 @@ func main() {
 	var err error
 	options := ctrl.Options{Scheme: scheme}
 
+	options.LeaderElection = true
+	options.LeaderElectionID = "execdat-operator-leader-election-id"
+	options.MetricsBindAddress = ":8080"
+	options.HealthProbeBindAddress = ":8081"
+	//options.WebhookServer = TODO
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
