@@ -101,10 +101,19 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				{Name: "GIT_BRANCH", Value: build.Spec.SourceCode.Branch},
 				{Name: "BUILD_CMD", Value: build.Spec.SourceCode.BuildCMD},
 			},
+			SecurityContext: &kcore.SecurityContext{
+				Capabilities: &kcore.Capabilities{
+					Add: []kcore.Capability{
+						"SETUID",
+						"SETGID",
+					},
+				},
+			},
 		},
 	}
 	podSpec.SecurityContext = &kcore.PodSecurityContext{
-		RunAsUser: pointer.Int64(1000),
+		RunAsUser:  pointer.Int64(1000),
+		RunAsGroup: pointer.Int64(1000),
 	}
 
 	job := &kbatch.Job{}
