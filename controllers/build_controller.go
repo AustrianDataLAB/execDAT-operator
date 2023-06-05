@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	pointer "k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -102,12 +103,14 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			},
 		},
 	}
+	podSpec.SecurityContext = &kcore.PodSecurityContext{
+		RunAsUser: pointer.Int64(1000),
+	}
 
 	job := &kbatch.Job{}
 	job.GenerateName = resourceName + "-"
 	job.ObjectMeta.Namespace = resourceNamespace
-	var ttl int32 = 60
-	job.Spec.TTLSecondsAfterFinished = &ttl
+	job.Spec.TTLSecondsAfterFinished = pointer.Int32(60)
 	job.Spec.Template.Spec = podSpec
 
 	if err := controllerutil.SetControllerReference(build, job, r.Scheme); err != nil {

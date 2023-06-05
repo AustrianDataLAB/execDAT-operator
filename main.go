@@ -52,6 +52,11 @@ func main() {
 	opts := zap.Options{
 		Development: true,
 	}
+	leaderElection := false
+	flag.BoolVar(&leaderElection, "leaderElection", false, "enable leaderElection mode")
+	leaderElectionID := "operator-leader-election-id.execd.at"
+	flag.StringVar(&leaderElectionID, "leaderElectionID", "operator-leader-election-id.execd.at", "set leaderElectionID")
+
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
@@ -60,8 +65,8 @@ func main() {
 	var err error
 	options := ctrl.Options{Scheme: scheme}
 
-	options.LeaderElection = true
-	options.LeaderElectionID = "operator-leader-election-id.execd.at"
+	options.LeaderElection = leaderElection
+	options.LeaderElectionID = leaderElectionID
 	options.HealthProbeBindAddress = ":8081"
 	options.MetricsBindAddress = "127.0.0.1:8080"
 	//options.WebhookServer = TODO
