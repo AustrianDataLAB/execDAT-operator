@@ -12,15 +12,15 @@ spec:
   runAsUser:
     rule: MustRunAsNonRoot
   volumes:
-    - configMap
+  - configMap
   fsGroup:
     ranges:
-      - max: 65535
-        min: 1
+    - max: 65535
+      min: 1
     rule: MustRunAs
   allowedCapabilities:
-    - SETGID
-    - SETUID
+  - SETGID
+  - SETUID
   seLinux:
     rule: RunAsAny
 
@@ -32,7 +32,7 @@ metadata:
 rules:
 - apiGroups: ['policy']
   resources: ['podsecuritypolicies']
-  verbs:     ['use']
+  verbs: ['use']
   resourceNames:
   - buildah
 
@@ -46,10 +46,10 @@ roleRef:
   name: buildah
   apiGroup: rbac.authorization.k8s.io
 subjects:
-  # Authorize all service accounts in a namespace (recommended):
-  - kind: Group
-    name: system:serviceaccounts
-    apiGroup: rbac.authorization.k8s.io
+# Authorize all service accounts in a namespace (recommended):
+- kind: Group
+  name: system:serviceaccounts
+  apiGroup: rbac.authorization.k8s.io
 
 ---
 apiVersion: v1
@@ -73,29 +73,29 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
       containers:
-        - name: buildah
-          image: ghcr.io/austriandatalab/execdat-operator-buildah:main
-          command:
-            - "buildah"
-          args:
-            - "build"
-            - "-t"
-            - "test"
-            - "-f"
-            - "/mnt/Dockerfile"
-          securityContext:
-            capabilities:
-              add:
-                - SETGID
-                - SETUID
-          resources: {}
-          volumeMounts:
-            - mountPath: /mnt
-              name: volume
+      - name: buildah
+        image: ghcr.io/austriandatalab/execdat-operator-buildah:main
+        command:
+        - "buildah"
+        args:
+        - "build"
+        - "-t"
+        - "test"
+        - "-f"
+        - "/mnt/Dockerfile"
+        securityContext:
+          capabilities:
+            add:
+            - SETGID
+            - SETUID
+        resources: {}
+        volumeMounts:
+        - mountPath: /mnt
+          name: volume
       volumes:
-        - name: volume
-          configMap:
-            name: dockerfile
+      - name: volume
+        configMap:
+          name: dockerfile
       restartPolicy: Never
 
 ---
@@ -109,3 +109,49 @@ data:
     WORKDIR /home/buildah
     # Just keep the container running
     CMD ["sleep", "infinity"]
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: Run
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
+      containers:
+      - name: Run
+        image: python:latest
+        command:
+        - "sh"
+        args:
+        - "/mnt/init.sh"
+        resources: {}
+        volumeMounts:
+        - mountPath: /mnt
+          name: volume
+      volumes:
+      - name: volume
+        configMap:
+          name: init.sh
+          defaultMode: 0500
+      restartPolicy: Never
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: init.sh
+data:
+  init.sh: |
+    #!/bin/bash
+    mkdir -p $INPUT_DATA_PATH                                     # create input data directory
+    wget --directory-prefix=$INPUT_DATA_PATH $INPUT_DATA_URL      # download input data into the input data directory
+    (cd $INPUT_DATA_PATH && eval $INPUT_DATA_TRANSFORM_COMMAND)   # execute the transform command in the input data directory
+    mkdir -p $OUTPUT_DATA_PATH                                    # create the output data directory
+    (cd $REPOSITORY_PATH && eval $REPOSITORY_RUN_COMMAND)         # execute the run command in the repo root directory
+immutable: true

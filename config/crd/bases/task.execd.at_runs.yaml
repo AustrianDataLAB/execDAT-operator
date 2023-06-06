@@ -1,4 +1,3 @@
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -21,14 +20,10 @@ spec:
         description: Run is the Schema for the runs API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
@@ -36,14 +31,12 @@ spec:
             description: RunSpec defines the desired state of Run
             properties:
               build:
-                description: Foo is an example field of Run. Edit run_types.go to
-                  remove/update
+                description: Foo is an example field of Run. Edit run_types.go to remove/update
                 properties:
                   description:
                     type: string
                   image:
-                    description: Foo is an example field of Build. Edit build_types.go
-                      to remove/update
+                    description: Foo is an example field of Build. Edit build_types.go to remove/update
                     type: string
                   sourcecode:
                     properties:
@@ -213,9 +206,7 @@ spec:
             description: RunStatus defines the observed state of Run
             properties:
               currentPhase:
-                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                  of cluster Important: Run "make" to regenerate code after modifying
-                  this file'
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of cluster Important: Run "make" to regenerate code after modifying this file'
                 type: string
             required:
             - currentPhase
