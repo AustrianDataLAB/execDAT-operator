@@ -176,9 +176,9 @@ jobs:
           make docker-buildx
           make bundle bundle-buildx
 
-  deploy:
-    needs: [prepare, operator]
-    runs-on: ubuntu-latest
+  # deploy:
+  #   needs: [prepare, operator]
+  #   runs-on: ubuntu-latest
     
 
   release:
