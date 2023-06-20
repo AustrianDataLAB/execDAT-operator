@@ -58,7 +58,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2023-06-04T18:59:10Z"
+    createdAt: "2023-06-15T14:33:30Z"
     operators.operatorframework.io/builder: operator-sdk-v1.29.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4-alpha
   name: execdat-operator.v0.0.1
@@ -210,7 +210,8 @@ spec:
                         - linux
               containers:
               - args:
-                - --config=controller_manager_config.yaml
+                - --leaderElection
+                - --leaderElectionID=manager.execd.at
                 command:
                 - /manager
                 image: controller:latest
@@ -239,10 +240,6 @@ spec:
                   capabilities:
                     drop:
                     - ALL
-                volumeMounts:
-                - mountPath: /controller_manager_config.yaml
-                  name: manager-config
-                  subPath: controller_manager_config.yaml
               - args:
                 - --secure-listen-address=0.0.0.0:8443
                 - --upstream=http://127.0.0.1:8080/
@@ -268,12 +265,10 @@ spec:
                     - ALL
               securityContext:
                 runAsNonRoot: true
+                seccompProfile:
+                  type: RuntimeDefault
               serviceAccountName: execdat-operator-controller-manager
               terminationGracePeriodSeconds: 10
-              volumes:
-              - configMap:
-                  name: execdat-operator-manager-config
-                name: manager-config
       permissions:
       - rules:
         - apiGroups:
