@@ -1,22 +1,73 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-uidmap
+data:
+  subuid: 1000:10000:65536
+  subgid: 1000:10000:65536
+
+---
+apiVersion: v1
 kind: Pod
 metadata:
-  name: test
+  name: build-sample-test
   namespace: default
 spec:
+  restartPolicy: Never
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
   containers:
-    - imagePullPolicy: Always
-      resources: {}
-      name: container-0
-      image: alpine
-      command: 
-      - "sleep"
-      - "infinity"
-      volumeMounts:
-        - name: vol
-          mountPath: /mnt
+  - command:
+    - "/bin/bash"
+    - "-c"
+    - "--"
+    args:
+    - 'trap : TERM INT; echo "$INIT_SH" | bash'
+    env:
+    - name: STORAGE_DRIVER
+      value: vfs
+    # Write all image metadata in the docker format, not the standard OCI format.
+    # Newer versions of docker can handle the OCI format, but older versions, like
+    # the one shipped with Fedora 30, cannot handle the format.
+    - name: BUILDAH_FORMAT
+      value: docker
+    # You may need this workaround for some errors: https://stackoverflow.com/a/70438141/1233435
+    - name: BUILDAH_ISOLATION
+      value: chroot
+    
+    - name: INIT_SH
+      value: |
+        #!/bin/bash
+        set -e
+
+        export BUILD="$(buildah from python:latest)"
+        buildah run $BUILD apt update -y
+        buildah run $BUILD apt install curl
+        buildah config --entrypoint "$ENTRYPOINT" $BUILD
+        buildah commit $BUILD $IMAGE_NAME
+        buildah push --tls-verify=false --creds $USER:$PASS $IMAGE_NAME docker://$REGISTRY_URL/$USER/$IMAGE_NAME
+    - name: BASE_IMAGE
+      value: python:latest
+    - name: ENTRYPOINT
+      value: python
+    - name: GIT_REPO
+      value: https://github.com/AustrianDataLAB/execDAT
+    - name: GIT_BRANCH
+      value: main
+    - name: BUILD_CMD
+    image: quay.io/buildah/stable
+    imagePullPolicy: Always
+    name: buildah
+    resources: {}
+    volumeMounts:
+    - name: custom-uidmap
+      mountPath: /etc/subuid
+      subPath: "subuid"
+    - name: custom-uidmap
+      mountPath: /etc/subgid
+      subPath: "subgid"
   volumes:
-    - configMap:
-        name: build-sample
-        defaultMode: 0744
-      name: vol
+    - name: custom-uidmap
+      configMap:
+        name: custom-uidmap

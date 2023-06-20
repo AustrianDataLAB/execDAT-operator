@@ -1,11 +1,10 @@
 # main.yml
 name: Build and Release operator
-run-name: ${{ github.actor }} triggerd -> ${{ github.event.head_commit.message }}${{ github.event.pull_request.title }}
+run-name: ${{ github.actor }} triggerd ${{ github.event_name }} -> ${{ github.ref_name }}  ${{ github.event.head_commit.message }}${{ github.event.pull_request.title }}
 
 on:
   push:
     branches:
-      - main
       - dev
       - feature/**
       - hotfix/**
@@ -29,14 +28,17 @@ env:
 
 jobs:
   prepare:
-    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
+    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
       IMAGE_TAG_BASE: ${{ steps.SET_IMAGE_TAG_BASE.outputs.IMAGE_TAG_BASE }}
       OPERATOR_VERSION: ${{ steps.SET_OPERATOR_VERSION.outputs.OPERATOR_VERSION }}
+      OPERATOR_VERSION_STRICT: ${{ steps.SET_OPERATOR_VERSION.outputs.OPERATOR_VERSION_STRICT }}
       IS_RELEASE: ${{ steps.SET_OPERATOR_VERSION.outputs.IS_RELEASE }}
-      current: ${{ steps.semver.outputs.current }}
-      next: ${{ steps.semver.outputs.next }}
+      CURRENT: ${{ steps.semver.outputs.current }}
+      NEXT: ${{ steps.semver.outputs.next }}
+      NEXT_STRICT: ${{ steps.semver.outputs.nextStrict }}
+      #RUN_BUILDAH: ${{ steps.filter.outputs.buildah }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -49,23 +51,32 @@ jobs:
 
       - name: Get Next Version
         id: semver
-        if: github.ref_name == 'main'
         continue-on-error: false
-        uses: ietf-tools/semver-action@v1
+        uses: ietf-tools/semver-action@v1.5.1
         with:
           token: ${{ github.token }}
-          branch: main
+          branch: ${{ github.ref_name }}
+          noVersionBumpBehavior: current
 
       - name: Set OPERATOR_VERSION
         id: SET_OPERATOR_VERSION
         uses: actions/github-script@v6
         env:
-          NEXT: ${{ steps.semver.outputs.next }}          
+          NEXT: ${{ steps.semver.outputs.next }}
+          NEXT_STRICT: ${{ steps.semver.outputs.nextStrict }}
+          CURRENT: ${{ steps.semver.outputs.current }}
         with:
           result-encoding: string
           script: |
-            const {GITHUB_REF_NAME,GITHUB_HEAD_REF,NEXT} = process.env
+            const {
+              GITHUB_REF_NAME,
+              GITHUB_HEAD_REF,
+              NEXT,
+              NEXT_STRICT,
+            } = process.env
+
             let OPERATOR_VERSION = GITHUB_REF_NAME
+            let OPERATOR_VERSION_STRICT = GITHUB_REF_NAME
 
             // if run is triggerd by a pull request use GITHUB_HEAD_REF
             if (GITHUB_HEAD_REF) {
@@ -73,55 +84,68 @@ jobs:
             }
 
             // remove any non alphanumeric characters
-            OPERATOR_VERSION = OPERATOR_VERSION.replace(/[^a-zA-Z0-9]/g, '-')
+            OPERATOR_VERSION = NEXT + '-' + OPERATOR_VERSION.replace(/[^a-zA-Z0-9]/g, '-')
+            OPERATOR_VERSION_STRICT = NEXT_STRICT + '-' + OPERATOR_VERSION_STRICT.replace(/[^a-zA-Z0-9]/g, '-')
   
             // if run is triggerd on main use the next tag
-            if (NEXT) {
+            if (OPERATOR_VERSION == 'main') {
               OPERATOR_VERSION = NEXT
+              OPERATOR_VERSION_STRICT = NEXT_STRICT
               core.setOutput('IS_RELEASE', true)
             }
 
             core.setOutput('OPERATOR_VERSION', OPERATOR_VERSION)
+            core.setOutput('OPERATOR_VERSION_STRICT', OPERATOR_VERSION_STRICT)
+        
+      # - name: check paths
+      #   uses: dorny/paths-filter@v2
+      #   id: filter
+      #   with:
+      #     filters: |
+      #       buildah:
+      #         - 'hack/Dockerfile.buildah.k8s.rootless'
 
-  buildah:
-    needs: prepare
-    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
-    runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:dind
-    env:
-      IMAGE_TAG_BASE: ${{ needs.prepare.outputs.IMAGE_TAG_BASE }}
-      OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
-    steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.IMAGE_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push
-        uses: docker/build-push-action@v4
-        with:
-          context: "{{defaultContext}}:hack"
-          platforms: linux/amd64,linux/arm64
-          file: "Dockerfile.buildah.k8s.rootless"
-          push: true
-          tags: ${{ env.IMAGE_TAG_BASE }}-buildah:${{ env.OPERATOR_VERSION }}
+  # buildah:
+  #   needs: prepare
+  #   if: ${{ needs.prepare.outputs.RUN_BUILDAH == 'true' }}
+  #   runs-on: ubuntu-latest
+  #   services:
+  #     docker:
+  #       image: docker:dind
+  #   env:
+  #     IMAGE_TAG_BASE: ${{ needs.prepare.outputs.IMAGE_TAG_BASE }}
+  #     OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
+  #   steps:
+  #     - name: Set up QEMU
+  #       uses: docker/setup-qemu-action@v2
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v2
+  #     - name: Login to Docker Hub
+  #       uses: docker/login-action@v2
+  #       with:
+  #         registry: ${{ env.IMAGE_REGISTRY }}
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Build and push
+  #       uses: docker/build-push-action@v4
+  #       with:
+  #         context: "{{defaultContext}}:hack"
+  #         platforms: linux/amd64,linux/arm64
+  #         file: "Dockerfile.buildah.k8s.rootless"
+  #         push: true
+  #         tags: ${{ env.IMAGE_TAG_BASE }}-buildah:${{ env.OPERATOR_VERSION }},${{ env.IMAGE_TAG_BASE }}-buildah:latest
 
   operator:
     needs: prepare
-    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true }}
+    if: ${{ github.event_name == 'push' || github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     services:
       docker:
         image: docker:dind
     env:
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
+      OPERATOR_VERSION_STRICT: ${{ needs.prepare.outputs.OPERATOR_VERSION_STRICT }}
+      VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION_STRICT }}
       IMAGE_TAG_BASE: ${{ needs.prepare.outputs.IMAGE_TAG_BASE }}
       IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
       BUNDLE_IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}-bundle:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
@@ -152,13 +176,23 @@ jobs:
           make docker-buildx
           make bundle bundle-buildx
 
+  # deploy:
+  #   needs: [prepare, operator]
+  #   runs-on: ubuntu-latest
+    
+
   release:
-    needs: [prepare, buildah, operator]
+    needs: [prepare, operator]
     runs-on: ubuntu-latest
     env:
       OPERATOR_VERSION: ${{ needs.prepare.outputs.OPERATOR_VERSION }}
-      current: ${{ needs.prepare.outputs.current }}
-      next: ${{ needs.prepare.outputs.next }}
+      OPERATOR_VERSION_STRICT: ${{ needs.prepare.outputs.OPERATOR_VERSION_STRICT }}
+      IMAGE_TAG_BASE: ${{ needs.prepare.outputs.IMAGE_TAG_BASE }}
+      IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
+      BUNDLE_IMG: "${{ needs.prepare.outputs.IMAGE_TAG_BASE }}-bundle:${{ needs.prepare.outputs.OPERATOR_VERSION }}"
+      CURRENT: ${{ needs.prepare.outputs.CURRENT }}
+      NEXT: ${{ needs.prepare.outputs.NEXT }}
+      NEXT_STRICT: ${{ needs.prepare.outputs.NEXT_STRICT }}
     if: github.ref_name == 'main' && needs.prepare.outputs.IS_RELEASE == 'true'
     permissions:
       contents: write
@@ -169,8 +203,8 @@ jobs:
         with:
           token: ${{ github.token }}
           fromTag: ${{ github.ref_name }}
-          toTag: ${{ env.current }}
-      # Create a new release on GitHub with the semantic version number
+          toTag: ${{ env.CURRENT }}
+      # Create a new release on GitHub with the semantic OPERATOR_VERSION number
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0
         with:
@@ -179,15 +213,19 @@ jobs:
           makeLatest: true
           name: "Release: ${{ env.OPERATOR_VERSION }}"
           body: |
-            # Install new operator version
+            # Install or upgrade new operator version
 
-            operator-sdk run bundle ghcr.io/austriandatalab/execdat-operator-bundle:${{ env.OPERATOR_VERSION }}
+            ```shell
+            operator-sdk run bundle ${{ env.IMAGE_TAG_BASE }}-bundle:${{ env.OPERATOR_VERSION }}
+            operator-sdk run bundle-upgrade ${{ env.IMAGE_TAG_BASE }}-bundle:${{ env.OPERATOR_VERSION }}
+            ```
 
             # Pull new images
             
-            docker pull ghcr.io/austriandatalab/execdat-operator-bundle:${{ env.OPERATOR_VERSION }}
-            docker pull ghcr.io/austriandatalab/execdat-operator-buildah:${{ env.OPERATOR_VERSION }}
-            docker pull ghcr.io/austriandatalab/execdat-operator:${{ env.OPERATOR_VERSION }}
+            ```shell
+            docker pull ${{ env.IMAGE_TAG_BASE }}-bundle:${{ env.OPERATOR_VERSION }}
+            docker pull ${{ env.IMAGE_TAG_BASE }}:${{ env.OPERATOR_VERSION }}
+            ```
 
             # Changelog
             ${{ steps.changelog.outputs.changes }}

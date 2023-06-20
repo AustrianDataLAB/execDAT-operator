@@ -2,6 +2,7 @@
 # used to generate the 'manifests/' directory in a bundle.
 resources:
 - bases/execdat-operator.clusterserviceversion.yaml
+- bases/execdat-operator.configmap-custom-uidmap.yaml
 - ../default
 - ../samples
 - ../scorecard
