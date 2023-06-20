@@ -33,7 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	taskv1alpha1 "github.com/AustrianDataLAB/execDAT-operator/api/v1alpha1"
-	"github.com/AustrianDataLAB/execDAT-operator/lib"
+	lib "github.com/AustrianDataLAB/execDAT-operator/lib"
 )
 
 // BuildReconciler reconciles a Build object
