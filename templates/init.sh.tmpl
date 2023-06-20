@@ -1,9 +1,15 @@
 #!/bin/bash
 set -e
 
-export BUILD="$(buildah from {{ .BaseImage }})"
-buildah run $BUILD apt update -y
-buildah run $BUILD apt install
-buildah config --entrypoint "$ENTRYPOINT" $BUILD
-buildah commit $BUILD $IMAGE_NAME
-buildah push --tls-verify=false --creds $USER:$PASS $IMAGE_NAME docker://$REGISTRY_URL/$USER/$IMAGE_NAME
+cd $HOME
+
+echo "TODO CLONE SOURCE"
+
+echo "Building with buildah upstream image"
+echo "Building from baseimage $BASE_IMAGE"
+echo "Using registry $REGISTRY_BASE"
+echo "Using image name $IMAGE_NAME"
+echo "$DOCKERFILE" > Dockerfile
+cat Dockerfile
+buildah bud -t $IMAGE_NAME -f Dockerfile .
+buildah push --creds $REGISTRY_USER:$REGISTRY_KEY $IMAGE_NAME docker://$REGISTRY_BASE/$IMAGE_NAME

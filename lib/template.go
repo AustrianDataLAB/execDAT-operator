@@ -3,26 +3,25 @@ package lib
 import (
 	"bytes"
 	"html/template"
+
+	taskv1alpha1 "github.com/AustrianDataLAB/execDAT-operator/api/v1alpha1"
 )
 
-type TemplateData struct {
+type InitTemplateData struct {
 	BaseImage string
-	// GitRepo   string
-	// GitBranch string
-	// BuildCmd  string
 }
 
-func GenerateScript(templatePaths []string, data TemplateData) (string, error) {
+func CreateTemplate[D InitTemplateData | taskv1alpha1.BuildSpec](templatePaths []string, data D) (string, error) {
 	tmpl, err := template.ParseFiles(templatePaths...)
 	tmpl = template.Must(tmpl, err)
 	if err != nil {
-		return "test", err
+		return "ERROR", err
 	}
 
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, data)
 	if err != nil {
-		return "test-2", err
+		return "ERROR", err
 	}
 
 	return buf.String(), nil

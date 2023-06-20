@@ -1,26 +1,18 @@
 package v1alpha1
 
 import (
-	"fmt"
-
-	lib "github.com/AustrianDataLAB/execDAT-operator/lib"
 	kcore "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 )
 
-func (build *Build) SetPodSpec(podSpec *kcore.PodSpec) error {
+type PodSpecData struct {
+	INIT_SH    string
+	Dockerfile string
+	ImageName  string
+}
 
-	scriptTemplates := []string{"./templates/init.sh.tmpl"}
-	templateData := lib.TemplateData{
-		BaseImage: build.Spec.BaseImage,
-		// GitRepo:   build.Spec.SourceCode.URL,
-		// GitBranch: build.Spec.SourceCode.Branch,
-		// BuildCmd:  build.Spec.SourceCode.BuildCMD,
-	}
-	init_sh, err := lib.GenerateScript(scriptTemplates, templateData)
-	if err != nil {
-		return fmt.Errorf("error generating script: %v", err)
-	}
+// SetPodSpec sets the pod spec for the build
+func (build *Build) SetPodSpec(podSpec *kcore.PodSpec, podSpecData PodSpecData) error {
 
 	podSpec.RestartPolicy = kcore.RestartPolicyNever
 
@@ -36,13 +28,14 @@ func (build *Build) SetPodSpec(podSpec *kcore.PodSpec) error {
 	podSpec.Containers = []kcore.Container{
 		{
 			Name:    "buildah",
-			Image:   "ghcr.io/austriandatalab/execdat-operator-buildah:main",
+			Image:   "quay.io/buildah/stable",
 			Command: []string{"/bin/bash", "-c", "--"},
 			Args:    []string{"trap : TERM INT; echo \"$INIT_SH\" | bash"},
 			Env: []kcore.EnvVar{
-				{Name: "INIT_SH", Value: init_sh},
+				{Name: "INIT_SH", Value: podSpecData.INIT_SH},
+				{Name: "DOCKERFILE", Value: podSpecData.Dockerfile},
 				{Name: "BASE_IMAGE", Value: build.Spec.BaseImage},
-				// {Name: "IMAGE_NAME", Value: build.Spec.ImageName},
+				{Name: "IMAGE_NAME", Value: podSpecData.ImageName},
 				// {Name: "IMAGE_TAG", Value: build.Spec.ImageTag},
 				// {Name: "IMAGE_REGISTRY", Value: build.Spec.ImageRegistry},
 				// {Name: "IMAGE_REGISTRY_USER", Value: build.Spec.ImageRegistryUser},
@@ -56,6 +49,30 @@ func (build *Build) SetPodSpec(podSpec *kcore.PodSpec) error {
 				{Name: "STORAGE_DRIVER", Value: "vfs"},
 				{Name: "BUILDAH_FORMAT", Value: "docker"},
 				{Name: "BUILDAH_ISOLATION", Value: "chroot"},
+				{Name: "REGISTRY_USER", ValueFrom: &kcore.EnvVarSource{
+					SecretKeyRef: &kcore.SecretKeySelector{
+						LocalObjectReference: kcore.LocalObjectReference{
+							Name: "buildah-registry-credentials",
+						},
+						Key: "REGISTRY_USER",
+					},
+				}},
+				{Name: "REGISTRY_KEY", ValueFrom: &kcore.EnvVarSource{
+					SecretKeyRef: &kcore.SecretKeySelector{
+						LocalObjectReference: kcore.LocalObjectReference{
+							Name: "buildah-registry-credentials",
+						},
+						Key: "REGISTRY_KEY",
+					},
+				}},
+				{Name: "REGISTRY_BASE", ValueFrom: &kcore.EnvVarSource{
+					SecretKeyRef: &kcore.SecretKeySelector{
+						LocalObjectReference: kcore.LocalObjectReference{
+							Name: "buildah-registry-credentials",
+						},
+						Key: "REGISTRY_BASE",
+					},
+				}},
 			},
 			SecurityContext: &kcore.SecurityContext{
 				Capabilities: &kcore.Capabilities{

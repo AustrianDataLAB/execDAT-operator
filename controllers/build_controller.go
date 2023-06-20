@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	taskv1alpha1 "github.com/AustrianDataLAB/execDAT-operator/api/v1alpha1"
+	"github.com/AustrianDataLAB/execDAT-operator/lib"
 )
 
 // BuildReconciler reconciles a Build object
@@ -66,8 +67,32 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	var resourceName string = build.Name
 	var resourceNamespace string = build.Namespace
 
+	scriptTemplates := []string{"./templates/init.sh.tmpl"}
+	templateData := lib.InitTemplateData{
+		BaseImage: build.Spec.BaseImage,
+		// GitRepo:   build.Spec.SourceCode.URL,
+		// GitBranch: build.Spec.SourceCode.Branch,
+		// BuildCmd:  build.Spec.SourceCode.BuildCMD,
+	}
+	init_sh, err := lib.CreateTemplate(scriptTemplates, templateData)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	dockerTemplates := []string{"./templates/Dockerfile.tmpl"}
+	dockerfile, err := lib.CreateTemplate(dockerTemplates, build.Spec)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	newPodSpecData := taskv1alpha1.PodSpecData{
+		INIT_SH:    init_sh,
+		Dockerfile: dockerfile,
+		ImageName:  build.ObjectMeta.Name,
+	}
+
 	podSpec := &kcore.PodSpec{}
-	if err := build.SetPodSpec(podSpec); err != nil {
+	if err := build.SetPodSpec(podSpec, newPodSpecData); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -82,7 +107,7 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	foundJob := &kbatch.Job{}
-	err := r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: resourceNamespace}, foundJob)
+	err = r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: resourceNamespace}, foundJob)
 	if err != nil && errors.IsNotFound(err) {
 		log.V(1).Info("Creating Job", "job", job.Name)
 		err = r.Create(ctx, job)

@@ -1,0 +1,15 @@
+FROM {{ .BaseImage }} as base
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt update -y && apt upgrade -y
+
+{{ range .SourceCode.Dependencies.OS }}
+RUN apt install -y {{ .Name -}}
+{{ end }}
+
+{{ range .SourceCode.Dependencies.Pip }}
+RUN pip3 install {{ .Name -}}
+{{ end }}
+
+ENTRYPOINT ["{{ .SourceCode.Entrypoint }}"]

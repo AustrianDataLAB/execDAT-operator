@@ -38,7 +38,7 @@ jobs:
       CURRENT: ${{ steps.semver.outputs.current }}
       NEXT: ${{ steps.semver.outputs.next }}
       NEXT_STRICT: ${{ steps.semver.outputs.nextStrict }}
-      RUN_BUILDAH: ${{ steps.filter.outputs.buildah }}
+      #RUN_BUILDAH: ${{ steps.filter.outputs.buildah }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -97,13 +97,13 @@ jobs:
             core.setOutput('OPERATOR_VERSION', OPERATOR_VERSION)
             core.setOutput('OPERATOR_VERSION_STRICT', OPERATOR_VERSION_STRICT)
         
-      - name: check paths
-        uses: dorny/paths-filter@v2
-        id: filter
-        with:
-          filters: |
-            buildah:
-              - 'hack/Dockerfile.buildah.k8s.rootless'
+      # - name: check paths
+      #   uses: dorny/paths-filter@v2
+      #   id: filter
+      #   with:
+      #     filters: |
+      #       buildah:
+      #         - 'hack/Dockerfile.buildah.k8s.rootless'
 
   # buildah:
   #   needs: prepare
