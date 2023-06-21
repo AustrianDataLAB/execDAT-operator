@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-uidmap
+data:
+  subuid: 1000:10000:65536
+  subgid: 1000:10000:65536
