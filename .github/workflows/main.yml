@@ -55,7 +55,8 @@ jobs:
         uses: ietf-tools/semver-action@v1.5.1
         with:
           token: ${{ github.token }}
-          branch: ${{ github.ref_name }}
+          # fall back to dev because we want to have a valid semver
+          branch: ${{ fromJSON('{"main":"dev"}')[github.ref_name] || github.ref_name }}
           noVersionBumpBehavior: current
 
       - name: Set OPERATOR_VERSION
@@ -193,10 +194,11 @@ jobs:
     steps:
       - name: Update CHANGELOG
         id: changelog
-        uses: requarks/changelog-action@v1.8.0
+        uses: requarks/changelog-action@v1.8.1
         with:
           token: ${{ github.token }}
-          fromTag: ${{ github.ref_name }}
+          # calculate the changelog from the last tag to the current dev state
+          fromTag: ${{ fromJSON('{"main":"dev"}')[github.ref_name] || github.ref_name }}
           toTag: ${{ env.CURRENT }}
       # Create a new release on GitHub with the semantic OPERATOR_VERSION number
       - name: Create Release
