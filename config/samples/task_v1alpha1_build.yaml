@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/created-by: execdat-operator
   name: build-sample
 spec:
-  baseimage: "python:latest"
+  baseimage: "ubuntu:latest"
   description: "default image for demos"
   sourcecode:
     url: "https://github.com/AustrianDataLAB/execDAT"
@@ -18,7 +18,4 @@ spec:
       os:
         - name: curl
           version: latest
-      pip:
-        - name: pandas
-          version: latest
-    entrypoint: python
+    entrypoint: bash
