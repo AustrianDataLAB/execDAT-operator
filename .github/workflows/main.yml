@@ -77,9 +77,9 @@ jobs:
 
             let REPLACED_BRANCH_NAME = (GITHUB_REF_NAME || GITHUB_HEAD_REF).replace(/[^a-zA-Z0-9]/g, '-')
 
-            // remove any non alphanumeric characters
-            let OPERATOR_VERSION = REPLACED_BRANCH_NAME
-            let OPERATOR_VERSION_STRICT = REPLACED_BRANCH_NAME
+            // use semver if branch name is not a valid semver
+            let OPERATOR_VERSION = NEXT + "-" + REPLACED_BRANCH_NAME
+            let OPERATOR_VERSION_STRICT = NEXT_STRICT + "-" + REPLACED_BRANCH_NAME
   
             // if run is triggerd on main use the next tag
             if (REPLACED_BRANCH_NAME == 'main') {
