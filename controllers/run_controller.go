@@ -47,9 +47,19 @@ type RunReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *RunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
+	log := logger.WithValues("taskv1alpha1.Run", req.NamespacedName)
 
-	// TODO(user): your logic here
+	run := &taskv1alpha1.Run{}
+	if err := r.Get(ctx, req.NamespacedName, run); err != nil {
+		log.V(1).Info("unable to fetch run", "run", req.NamespacedName)
+		// we'll ignore not-found errors, since they can't be fixed by an immediate
+		// requeue (we'll need to wait for a new notification), and we can get them
+		// on deleted requests.
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	log.V(1).Info("reconciling run", "run", run)
 
 	return ctrl.Result{}, nil
 }

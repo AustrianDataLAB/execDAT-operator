@@ -110,6 +110,7 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	err = r.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: resourceNamespace}, foundJob)
 	if err != nil && errors.IsNotFound(err) {
 		log.V(1).Info("Creating Job", "job", job.Name)
+		//TODO create the Job in a separate namespace
 		err = r.Create(ctx, job)
 	} else if err == nil {
 		log.V(1).Info("Job already created", "job", job.Name)
