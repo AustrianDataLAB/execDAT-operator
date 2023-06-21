@@ -75,20 +75,14 @@ jobs:
               NEXT_STRICT,
             } = process.env
 
-            let OPERATOR_VERSION = GITHUB_REF_NAME
-            let OPERATOR_VERSION_STRICT = GITHUB_REF_NAME
+            let REPLACED_BRANCH_NAME = (GITHUB_REF_NAME || GITHUB_HEAD_REF).replace(/[^a-zA-Z0-9]/g, '-')
 
-            // if run is triggerd by a pull request use GITHUB_HEAD_REF
-            if (GITHUB_HEAD_REF) {
-              OPERATOR_VERSION = GITHUB_HEAD_REF
-            }
-
-            // remove any non alphanumeric characters
-            OPERATOR_VERSION = NEXT + '-' + OPERATOR_VERSION.replace(/[^a-zA-Z0-9]/g, '-')
-            OPERATOR_VERSION_STRICT = NEXT_STRICT + '-' + OPERATOR_VERSION_STRICT.replace(/[^a-zA-Z0-9]/g, '-')
+            // use semver if branch name is not a valid semver
+            let OPERATOR_VERSION = NEXT + "-" + REPLACED_BRANCH_NAME
+            let OPERATOR_VERSION_STRICT = NEXT_STRICT + "-" + REPLACED_BRANCH_NAME
   
             // if run is triggerd on main use the next tag
-            if (OPERATOR_VERSION == 'main') {
+            if (REPLACED_BRANCH_NAME == 'main') {
               OPERATOR_VERSION = NEXT
               OPERATOR_VERSION_STRICT = NEXT_STRICT
               core.setOutput('IS_RELEASE', true)
