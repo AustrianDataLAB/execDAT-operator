@@ -9,6 +9,7 @@ type PodSpecData struct {
 	INIT_SH    string
 	Dockerfile string
 	ImageName  string
+	ImageTag   string
 }
 
 // SetPodSpec sets the pod spec for the build
@@ -36,7 +37,7 @@ func (build *Build) SetPodSpec(podSpec *kcore.PodSpec, podSpecData PodSpecData) 
 				{Name: "DOCKERFILE", Value: podSpecData.Dockerfile},
 				{Name: "BASE_IMAGE", Value: build.Spec.BaseImage},
 				{Name: "IMAGE_NAME", Value: podSpecData.ImageName},
-				// {Name: "IMAGE_TAG", Value: build.Spec.ImageTag},
+				{Name: "IMAGE_TAG", Value: podSpecData.ImageTag},
 				// {Name: "IMAGE_REGISTRY", Value: build.Spec.ImageRegistry},
 				// {Name: "IMAGE_REGISTRY_USER", Value: build.Spec.ImageRegistryUser},
 				// {Name: "IMAGE_REGISTRY_PASSWORD", Value: build.Spec.ImageRegistryPassword},

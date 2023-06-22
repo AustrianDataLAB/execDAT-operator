@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"strings"
 
 	//kapps "k8s.io/api/apps/v1"
 
@@ -88,7 +89,9 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	newPodSpecData := taskv1alpha1.PodSpecData{
 		INIT_SH:    init_sh,
 		Dockerfile: dockerfile,
-		ImageName:  build.ObjectMeta.Name,
+
+		ImageName: strings.TrimSuffix(build.ObjectMeta.GenerateName, "-"),
+		ImageTag:  strings.Split(build.ObjectMeta.Name, build.ObjectMeta.GenerateName)[1],
 	}
 
 	podSpec := &kcore.PodSpec{}

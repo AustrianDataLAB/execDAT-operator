@@ -29,11 +29,10 @@ type RunSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Run. Edit run_types.go to remove/update
-	Build      BuildSpec      `json:"build"`
-	OutputData OutputDataSpec `json:"outputdata"`
-	//+optional
-	InputData   InputDataSpec `json:"inputdata,omitempty"`
-	Description string        `json:"description,omitempty"`
+	Build       BuildSpec      `json:"build"`
+	OutputData  OutputDataSpec `json:"outputdata,omitempty"`
+	InputData   InputDataSpec  `json:"inputdata,omitempty"`
+	Description string         `json:"description,omitempty"`
 }
 
 // RunStatus defines the observed state of Run

@@ -28,13 +28,13 @@ type SourceCodeSpec struct {
 }
 
 type InputDataSpec struct {
-	URL          string `json:"url" description:"URL of the data repo of input data"`
-	Type         string `json:"type" description:"Type of the input data source, e.g. s3, git, http, https, etc."`
 	DataPath     string `json:"datapath" description:"Path to the data directory with input data, has to be a unix path."`
+	URL          string `json:"url" description:"URL of the data repo of input data"`
+	Type         string `json:"type,omitempty" description:"Type of the input data source, e.g. s3, git, http, https, etc."`
 	TransformCMD string `json:"transformcmd,omitempty" description:"Command to transform the input data"`
 }
 
 type OutputDataSpec struct {
-	URL      string `json:"url" description:"URL of the data repo of output data"`
 	DataPath string `json:"datapath" description:"Path to the data directory with output data, has to be a unix path."`
+	URL      string `json:"url,omitempty" description:"URL of the data repo of output data"`
 }

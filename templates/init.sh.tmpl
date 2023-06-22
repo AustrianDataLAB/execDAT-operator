@@ -11,5 +11,7 @@ echo "Using registry $REGISTRY_BASE"
 echo "Using image name $IMAGE_NAME"
 echo "$DOCKERFILE" > Dockerfile
 cat Dockerfile
-buildah bud -t $IMAGE_NAME -f Dockerfile .
-buildah push --creds $REGISTRY_USER:$REGISTRY_KEY $IMAGE_NAME docker://$REGISTRY_BASE/$IMAGE_NAME
+buildah login -u $REGISTRY_USER -p $REGISTRY_KEY $REGISTRY_BASE
+buildah bud --build-arg CACHE_DATE="$(date)" --layers --retry=1 --retry-delay=1s --cache-to $REGISTRY_BASE/$IMAGE_NAME/cache --cache-from $REGISTRY_BASE/$IMAGE_NAME/cache -t $IMAGE_NAME:$IMAGE_TAG -f Dockerfile .
+buildah tag $IMAGE_NAME:$IMAGE_TAG $REGISTRY_BASE/$IMAGE_NAME:$IMAGE_TAG
+buildah push --all $REGISTRY_BASE/$IMAGE_NAME:$IMAGE_TAG docker://$REGISTRY_BASE/$IMAGE_NAME:$IMAGE_TAG

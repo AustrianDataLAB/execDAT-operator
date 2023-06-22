@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	taskv1alpha1 "github.com/AustrianDataLAB/execDAT-operator/api/v1alpha1"
@@ -60,7 +61,21 @@ func (r *RunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	log.V(1).Info("reconciling run", "run", run)
+	var resourceName string = run.Name
+	var resourceNamespace string = run.Namespace
 
+	build := &taskv1alpha1.Build{}
+	build.GenerateName = resourceName + "-"
+	build.ObjectMeta.Namespace = resourceNamespace
+	build.Spec = run.Spec.Build
+
+	if err := controllerutil.SetControllerReference(run, build, r.Scheme); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if err := r.Create(ctx, build); err != nil {
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, nil
 }
 

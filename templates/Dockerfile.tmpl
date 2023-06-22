@@ -1,8 +1,11 @@
-FROM {{ .BaseImage }} as base
+FROM {{ .BaseImage }}
+
+WORKDIR /execdat
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt update -y && apt upgrade -y
+RUN apt install -y git
 
 {{ range .SourceCode.Dependencies.OS }}
 RUN apt install -y {{ .Name -}}
@@ -11,5 +14,8 @@ RUN apt install -y {{ .Name -}}
 {{ range .SourceCode.Dependencies.Pip }}
 RUN pip3 install {{ .Name -}}
 {{ end }}
+
+ARG CACHE_DATE=2023-01-01
+RUN git clone --depth 1 -b {{ .SourceCode.Branch }} --single-branch {{ .SourceCode.URL }} .
 
 ENTRYPOINT ["{{ .SourceCode.Entrypoint }}"]
