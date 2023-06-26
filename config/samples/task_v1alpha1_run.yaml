@@ -9,4 +9,20 @@ metadata:
     app.kubernetes.io/created-by: execdat-operator
   name: run-sample
 spec:
-  # TODO(user): Add fields here
+  description: "Test hunde demo 2"
+  build:
+    baseimage: "ubuntu:jammy"
+    description: "default image for demos"
+    sourcecode:
+      url: "https://github.com/AustrianDataLAB/execDAT"
+      branch: "feature/example"
+      dependencies:
+        os:
+          - name: curl
+            version: latest
+      entrypoint: examples/entrypoint.sh
+  outputdata:
+    datapath: /output
+  inputdata:
+    url: https://www.wien.gv.at/finanzen/ogd/hunde-wien.csv
+    datapath: /input

@@ -36,8 +36,7 @@ type BuildSpec struct {
 
 // BuildStatus defines the observed state of Build
 type BuildStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	CurrentPhase *CurrentPhase `json:"currentPhase"` //TODO: add fields of status and dataurls to kubectl get outputs
 }
 
 //+kubebuilder:object:root=true

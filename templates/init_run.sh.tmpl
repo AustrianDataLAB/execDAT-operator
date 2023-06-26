@@ -1,0 +1,14 @@
+#!/bin/bash
+set -e
+
+wget -P {{ .InputData.DataPath }} {{ .InputData.URL }}
+
+{{ .Build.SourceCode.EntryPoint }}
+
+echo "Pushing results to Minio bucket"
+
+# Upload the results to the Minio bucket
+mc alias set minio $MINIO_ENDPOINT $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+mc cp {{ .OutputData.DataPath }} minio/$BUCKET_NAME/ --recursive
+
+echo "Run process completed"

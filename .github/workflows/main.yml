@@ -55,8 +55,9 @@ jobs:
         uses: ietf-tools/semver-action@v1.5.1
         with:
           token: ${{ github.token }}
+          patchAll: true
           # fall back to dev because we want to have a valid semver
-          branch: ${{ fromJSON('{"main":"dev"}')[github.ref_name] || github.ref_name }}
+          branch: ${{ fromJSON('{"main":"main"}')[github.ref_name] || github.ref_name }}
           noVersionBumpBehavior: current
 
       - name: Set OPERATOR_VERSION
@@ -198,7 +199,7 @@ jobs:
         with:
           token: ${{ github.token }}
           # calculate the changelog from the last tag to the current dev state
-          fromTag: ${{ fromJSON('{"main":"dev"}')[github.ref_name] || github.ref_name }}
+          fromTag: ${{ fromJSON('{"main":"main"}')[github.ref_name] || github.ref_name }}
           toTag: ${{ env.CURRENT }}
       # Create a new release on GitHub with the semantic OPERATOR_VERSION number
       - name: Create Release

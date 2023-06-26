@@ -191,7 +191,6 @@ spec:
                     type: string
                 required:
                 - datapath
-                - type
                 - url
                 type: object
               outputdata:
@@ -202,11 +201,9 @@ spec:
                     type: string
                 required:
                 - datapath
-                - url
                 type: object
             required:
             - build
-            - outputdata
             type: object
           status:
             description: RunStatus defines the observed state of Run
