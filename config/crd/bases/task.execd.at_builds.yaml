@@ -175,6 +175,13 @@ spec:
             type: object
           status:
             description: BuildStatus defines the observed state of Build
+            properties:
+              currentPhase:
+                description: swagger:enum CurrentPhase ENUM(pending, building, running,
+                  buildComplete, runCompleted, failed)
+                type: string
+            required:
+            - currentPhase
             type: object
         type: object
     served: true

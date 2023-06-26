@@ -24,7 +24,7 @@ type SourceCodeSpec struct {
 	Dependencies  DependenciesSpec `json:"dependencies,omitempty"`
 	DependencyCMD string           `json:"dependencycmd,omitempty"`
 	BuildCMD      string           `json:"buildcmd,omitempty"`
-	Entrypoint    string           `json:"entrypoint"`
+	EntryPoint    string           `json:"entrypoint"`
 }
 
 type InputDataSpec struct {

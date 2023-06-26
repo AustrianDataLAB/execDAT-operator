@@ -39,8 +39,7 @@ type RunSpec struct {
 type RunStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	CurrentPhase string `json:"currentPhase"` //TODO: add fields of status and dataurls to kubectl get outputs
-	Test         string `json:"test"`
+	CurrentPhase *CurrentPhase `json:"currentPhase"` //TODO: add fields of status and dataurls to kubectl get outputs
 }
 
 //+kubebuilder:object:root=true

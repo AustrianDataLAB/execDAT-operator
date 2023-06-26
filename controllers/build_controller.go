@@ -18,7 +18,9 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
 	//kapps "k8s.io/api/apps/v1"
 
@@ -65,17 +67,16 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	if build.Status.CurrentPhase != nil && *build.Status.CurrentPhase == taskv1alpha1.CurrentPhaseBuildComplete {
+		log.V(1).Info("Build already completed", "build", req.NamespacedName)
+		return ctrl.Result{}, nil
+	}
+
 	var resourceName string = build.Name
 	var resourceNamespace string = build.Namespace
 
-	scriptTemplates := []string{"./templates/init.sh.tmpl"}
-	templateData := lib.InitTemplateData{
-		BaseImage: build.Spec.BaseImage,
-		// GitRepo:   build.Spec.SourceCode.URL,
-		// GitBranch: build.Spec.SourceCode.Branch,
-		// BuildCmd:  build.Spec.SourceCode.BuildCMD,
-	}
-	init_sh, err := lib.CreateTemplate(scriptTemplates, templateData)
+	scriptTemplates := []string{"./templates/init_build.sh.tmpl"}
+	init_sh, err := lib.CreateTemplate(scriptTemplates, build.Spec)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -86,21 +87,20 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	newPodSpecData := taskv1alpha1.PodSpecData{
+	newBuildPodSpecData := taskv1alpha1.BuildPodSpecData{
 		INIT_SH:    init_sh,
 		Dockerfile: dockerfile,
-
-		ImageName: strings.TrimSuffix(build.ObjectMeta.GenerateName, "-"),
-		ImageTag:  strings.Split(build.ObjectMeta.Name, build.ObjectMeta.GenerateName)[1],
+		ImageName:  build.ObjectMeta.Labels["runRef"],
+		ImageTag:   strings.Split(build.ObjectMeta.Name, build.ObjectMeta.GenerateName)[1],
 	}
 
 	podSpec := &kcore.PodSpec{}
-	if err := build.SetPodSpec(podSpec, newPodSpecData); err != nil {
+	if err := build.SetPodSpec(podSpec, newBuildPodSpecData); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	job := &kbatch.Job{}
-	job.GenerateName = resourceName + "-"
+	job.Name = resourceName
 	job.ObjectMeta.Namespace = resourceNamespace
 	job.Spec.TTLSecondsAfterFinished = pointer.Int32(60)
 	job.Spec.Template.Spec = *podSpec
@@ -116,7 +116,30 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		//TODO create the Job in a separate namespace
 		err = r.Create(ctx, job)
 	} else if err == nil {
+
 		log.V(1).Info("Job already created", "job", job.Name)
+		if build.Status.CurrentPhase == nil {
+			build.Status.CurrentPhase = taskv1alpha1.CurrentPhaseBuilding.Ptr()
+			if err := r.Status().Update(ctx, build); err != nil {
+				return ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("failed to update build status: %w", err)
+			}
+		}
+
+		// Check if the Job has completed
+		jobComplete, err := CheckJobCompletion(job, r.Client)
+		if err != nil {
+			log.Error(err, "Failed to check Job completion")
+			return ctrl.Result{}, err
+		}
+		if jobComplete {
+			log.V(1).Info("Job has completed", "job", job.Name)
+			build.Status.CurrentPhase = taskv1alpha1.CurrentPhaseBuildComplete.Ptr()
+			if err := r.Status().Update(ctx, build); err != nil {
+				return ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("failed to update build status: %w", err)
+			}
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 	}
 
 	return ctrl.Result{}, err
@@ -126,5 +149,6 @@ func (r *BuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 func (r *BuildReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&taskv1alpha1.Build{}).
+		Owns(&kbatch.Job{}).
 		Complete(r)
 }

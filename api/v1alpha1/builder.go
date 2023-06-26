@@ -5,7 +5,7 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-type PodSpecData struct {
+type BuildPodSpecData struct {
 	INIT_SH    string
 	Dockerfile string
 	ImageName  string
@@ -13,7 +13,7 @@ type PodSpecData struct {
 }
 
 // SetPodSpec sets the pod spec for the build
-func (build *Build) SetPodSpec(podSpec *kcore.PodSpec, podSpecData PodSpecData) error {
+func (build *Build) SetPodSpec(podSpec *kcore.PodSpec, buildPodSpecData BuildPodSpecData) error {
 
 	podSpec.RestartPolicy = kcore.RestartPolicyNever
 
@@ -28,22 +28,23 @@ func (build *Build) SetPodSpec(podSpec *kcore.PodSpec, podSpecData PodSpecData) 
 	}
 	podSpec.Containers = []kcore.Container{
 		{
-			Name:    "buildah",
-			Image:   "quay.io/buildah/stable",
-			Command: []string{"/bin/bash", "-c", "--"},
-			Args:    []string{"trap : TERM INT; echo \"$INIT_SH\" | bash"},
+			Name:            "buildah",
+			Image:           "quay.io/buildah/stable",
+			ImagePullPolicy: kcore.PullIfNotPresent,
+			Command:         []string{"/bin/bash", "-c", "--"},
+			Args:            []string{"trap : TERM INT; echo \"$INIT_SH\" | bash"},
 			Env: []kcore.EnvVar{
-				{Name: "INIT_SH", Value: podSpecData.INIT_SH},
-				{Name: "DOCKERFILE", Value: podSpecData.Dockerfile},
+				{Name: "INIT_SH", Value: buildPodSpecData.INIT_SH},
+				{Name: "DOCKERFILE", Value: buildPodSpecData.Dockerfile},
 				{Name: "BASE_IMAGE", Value: build.Spec.BaseImage},
-				{Name: "IMAGE_NAME", Value: podSpecData.ImageName},
-				{Name: "IMAGE_TAG", Value: podSpecData.ImageTag},
+				{Name: "IMAGE_NAME", Value: buildPodSpecData.ImageName},
+				{Name: "IMAGE_TAG", Value: buildPodSpecData.ImageTag},
 				// {Name: "IMAGE_REGISTRY", Value: build.Spec.ImageRegistry},
 				// {Name: "IMAGE_REGISTRY_USER", Value: build.Spec.ImageRegistryUser},
 				// {Name: "IMAGE_REGISTRY_PASSWORD", Value: build.Spec.ImageRegistryPassword},
 				// {Name: "IMAGE_REGISTRY_INSECURE", Value: build.Spec.ImageRegistryInsecure},
 				// {Name: "IMAGE_REGISTRY_VERIFY_TLS", Value: build.Spec.ImageRegistryVerifyTLS},
-				{Name: "ENTRYPOINT", Value: build.Spec.SourceCode.Entrypoint},
+				{Name: "ENTRYPOINT", Value: build.Spec.SourceCode.EntryPoint},
 				{Name: "GIT_REPO", Value: build.Spec.SourceCode.URL},
 				{Name: "GIT_BRANCH", Value: build.Spec.SourceCode.Branch},
 				{Name: "BUILD_CMD", Value: build.Spec.SourceCode.BuildCMD},

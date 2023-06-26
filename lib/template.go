@@ -7,11 +7,7 @@ import (
 	taskv1alpha1 "github.com/AustrianDataLAB/execDAT-operator/api/v1alpha1"
 )
 
-type InitTemplateData struct {
-	BaseImage string
-}
-
-func CreateTemplate[D InitTemplateData | taskv1alpha1.BuildSpec](templatePaths []string, data D) (string, error) {
+func CreateTemplate[D taskv1alpha1.BuildSpec | taskv1alpha1.RunSpec](templatePaths []string, data D) (string, error) {
 	tmpl, err := template.ParseFiles(templatePaths...)
 	tmpl = template.Must(tmpl, err)
 	if err != nil {
