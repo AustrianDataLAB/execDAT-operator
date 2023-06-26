@@ -1,15 +1,27 @@
+FROM docker://minio/mc:RELEASE.2023-06-23T18-12-07Z as mc
 FROM {{ .BaseImage }} as base
+
+COPY --from=mc /usr/bin/mc /usr/bin/mc
+RUN chmod +x /usr/bin/mc
+ENV PATH="/usr/bin:${PATH}"
+WORKDIR /execdat
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt update -y && apt upgrade -y
-
-{{ range .SourceCode.Dependencies.OS }}
-RUN apt install -y {{ .Name -}}
-{{ end }}
+RUN apt update -y && apt install -y \
+    git \
+    curl \
+    wget \
+{{ range .SourceCode.Dependencies.OS -}}
+    {{ .Name }} \
+{{ end -}}
+    && rm -rf /var/lib/apt/lists/*
 
 {{ range .SourceCode.Dependencies.Pip }}
 RUN pip3 install {{ .Name -}}
 {{ end }}
 
-ENTRYPOINT ["{{ .SourceCode.Entrypoint }}"]
+ARG CACHE_DATE=2023-01-01
+RUN git clone --depth 1 -b {{ .SourceCode.Branch }} --single-branch {{ .SourceCode.URL }} .
+
+ENTRYPOINT ["{{ .SourceCode.EntryPoint }}"]
