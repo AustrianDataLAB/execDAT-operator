@@ -8,8 +8,25 @@ ExecDAT is a tool to execute data analysis tasks on Kubernetes. It is designed t
 
 ## Getting Started
 
-You’ll need a Kubernetes cluster to run against. See k3d for a quick way to get a local cluster up and running.
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
+### Prerequisites
+
+* operator-sdk
+* container engine (docker, podman, ...)
+* kubernetes cluster (minikube, k3d, ...)
+
+### Test out the operator
+
+```shell
+make install
+make run
+```
+
+### Run using OLM
+
+```shell
+operator-sdk olm install
+operator-sdk run bundle-upgrade ghcr.io/austriandatalab/execdat-operator-bundle:v0.2.0
+```
 
 ### Running on the cluster
 
@@ -47,32 +64,12 @@ UnDeploy the controller to the cluster:
 make undeploy
 ```
 
-## Contributing
-
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
 ### How it works
 
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 
 It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/)
 which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the cluster
-
-### Test It Out
-
-1. Install the CRDs into the cluster:
-
-```sh
-make install
-```
-
-2. Run your controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
-
-```sh
-make run
-```
-
-**NOTE:** You can also run this in one step by running: `make install run`
 
 ### Modifying the API definitions
 
